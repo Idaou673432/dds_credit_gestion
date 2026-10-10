@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Profil de l'utilisateur commerçant ou employé",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "activeBusinessId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Boutique ou commerce géré",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "ownerEmail": { "type": "string", "maxLength": 256 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 256 },
+        "city": { "type": "string", "maxLength": 128 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "slogan": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId", "currency"]
+    },
+    "Membership": {
+      "title": "Membership",
+      "description": "Appartenance d'un employé ou commerçant à une boutique avec son rôle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "role": { "type": "string", "enum": ["owner", "manager", "cashier"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "userId", "role"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Client de la boutique avec suivi de sa dette",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 256 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "totalCredit": { "type": "number" },
+        "totalPaid": { "type": "number" },
+        "currentDebt": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "name", "phone", "currentDebt", "status"]
+    },
+    "Credit": {
+      "title": "Credit",
+      "description": "Crédit ou dette accordée à un client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "customerPhone": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "amount": { "type": "number" },
+        "initialPayment": { "type": "number" },
+        "totalPaid": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "creditDate": { "type": "string", "maxLength": 32 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["active", "paid", "overdue"] },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "reference", "businessId", "customerId", "amount", "remainingAmount", "status"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Remboursement partiel ou total d'un crédit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "creditId": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "orange_money", "moov_money", "bank_transfer", "other"] },
+        "paymentDate": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "remainingAfter": { "type": "number" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "reference", "businessId", "customerId", "creditId", "amount", "paymentMethod"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Traçabilité des opérations financières et modifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "action": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 1024 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "businessId", "userId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Profils des utilisateurs commerçants"
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/Business" },
+      "description": "Commerces et boutiques"
+    },
+    "/memberships/{membershipId}": {
+      "schema": { "$ref": "#/entities/Membership" },
+      "description": "Association utilisateur et boutique avec rôle"
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Clients d'une boutique"
+    },
+    "/credits/{creditId}": {
+      "schema": { "$ref": "#/entities/Credit" },
+      "description": "Dettes et crédits octroyés"
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Remboursements enregistrés"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Journal d'audit des actions"
+    }
+  }
+}

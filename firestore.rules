@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwnerOfUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId);
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 256;
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Businesses Collection
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && isValidId(businessId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(businessId)
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 128;
+      allow update: if isSignedIn() && isValidId(businessId)
+                    && (resource.data.ownerId == request.auth.uid)
+                    && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Memberships Collection
+    match /memberships/{membershipId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(membershipId)
+                    && (request.resource.data.userId == request.auth.uid || request.resource.data.role in ['owner', 'manager', 'cashier']);
+      allow update: if isSignedIn() && isValidId(membershipId);
+      allow delete: if isSignedIn();
+    }
+
+    // Customers Collection
+    match /customers/{customerId} {
+      allow get: if isSignedIn() && isValidId(customerId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(customerId)
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 128
+                    && request.resource.data.businessId is string
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() <= 32
+                    && request.resource.data.currentDebt is number
+                    && request.resource.data.currentDebt >= 0;
+      allow update: if isSignedIn() && isValidId(customerId)
+                    && request.resource.data.businessId == resource.data.businessId
+                    && request.resource.data.currentDebt is number
+                    && request.resource.data.currentDebt >= 0;
+      allow delete: if isSignedIn();
+    }
+
+    // Credits Collection
+    match /credits/{creditId} {
+      allow get: if isSignedIn() && isValidId(creditId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(creditId)
+                    && request.resource.data.businessId is string
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.remainingAmount is number
+                    && request.resource.data.remainingAmount >= 0
+                    && request.resource.data.status in ['active', 'paid', 'overdue'];
+      allow update: if isSignedIn() && isValidId(creditId)
+                    && request.resource.data.businessId == resource.data.businessId
+                    && request.resource.data.remainingAmount is number
+                    && request.resource.data.remainingAmount >= 0
+                    && request.resource.data.status in ['active', 'paid', 'overdue'];
+      allow delete: if isSignedIn();
+    }
+
+    // Payments Collection
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && isValidId(paymentId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(paymentId)
+                    && request.resource.data.businessId is string
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.paymentMethod in ['cash', 'orange_money', 'moov_money', 'bank_transfer', 'other'];
+      allow update: if false; // Payments are immutable receipts!
+      allow delete: if isSignedIn();
+    }
+
+    // AuditLogs Collection
+    match /auditLogs/{logId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId)
+                    && request.resource.data.businessId is string
+                    && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Immutable audit logs
+    }
+  }
+}

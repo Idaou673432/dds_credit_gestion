@@ -1,0 +1,7 @@
+{
+  "name": "DDS Crédit Confiance",
+  "description": "Application professionnelle de gestion des dettes et crédits clients pour commerçants maliens par Diaby Digital Solution (DDS).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
