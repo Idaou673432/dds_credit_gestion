@@ -280,6 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setErrorMessage("La fenêtre de connexion Google a été fermée.");
       } else if (errorMsg.includes('popup-blocked')) {
         setErrorMessage("La fenêtre de connexion a été bloquée par le navigateur. Veuillez autoriser les popups pour ce site.");
+      } else if (errorMsg.includes('unauthorized-domain')) {
+        setErrorMessage("Domaine non autorisé dans Firebase Authentication. Le projet a été synchronisé, veuillez réessayer.");
       } else {
         setErrorMessage("Erreur d'authentification Google : " + errorMsg);
       }
