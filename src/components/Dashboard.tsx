@@ -52,11 +52,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
       ? Math.min(100, Math.round((totalRefundsReceived / totalCreditGranted) * 100))
       : 100;
 
+  // Monthly stats
+  const currentMonthKey = new Date().toISOString().substring(0, 7);
+  const currentMonthGranted = credits
+    .filter((c) => c.createdAt.startsWith(currentMonthKey))
+    .reduce((sum, c) => sum + (c.amount || 0), 0);
+  const currentMonthReceived = payments
+    .filter((p) => p.createdAt.startsWith(currentMonthKey))
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const monthlyRecoveryRate =
+    currentMonthGranted > 0
+      ? Math.min(100, Math.round((currentMonthReceived / currentMonthGranted) * 100))
+      : 100;
+
+  // Due today and overdue calculations
+  const todayDateStr = new Date().toISOString().substring(0, 10);
+  const urgentCredits = credits
+    .filter((c) => c.status !== 'paid' && c.remainingAmount > 0 && c.dueDate)
+    .map((c) => {
+      const isDueToday = c.dueDate === todayDateStr;
+      const isPast = (c.dueDate || '') < todayDateStr;
+      const diffTime = new Date(todayDateStr).getTime() - new Date(c.dueDate!).getTime();
+      const daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      return { ...c, isDueToday, isPast, daysOverdue };
+    })
+    .filter((c) => c.isDueToday || c.isPast)
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
   // Upcoming due dates (credits with dueDate that are still active and not paid)
   const upcomingCredits = credits
     .filter((c) => c.status !== 'paid' && c.remainingAmount > 0 && c.dueDate)
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, 5);
+    .slice(0, 6);
 
   // Recent operations combining credits and payments
   type Operation =
@@ -118,6 +145,74 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Alert banner for urgent/overdue debts */}
+      {urgentCredits.length > 0 && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-950/60 via-slate-900 to-amber-950/40 border border-rose-500/30 shadow-xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                <span>Alertes de Recouvrement ({urgentCredits.length}) :</span>
+                <span className="text-rose-400 font-extrabold">Échéances du jour & Retards</span>
+              </h3>
+            </div>
+            <button
+              onClick={() => onSelectTab('credits')}
+              className="text-xs font-semibold text-rose-300 hover:text-white underline cursor-pointer self-start sm:self-auto"
+            >
+              Voir tous les retards
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {urgentCredits.slice(0, 3).map((uc) => (
+              <div
+                key={uc.id}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-rose-500/20 flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-bold text-white truncate">{uc.customerName}</p>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                        uc.isDueToday
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'bg-rose-500/20 text-rose-300'
+                      }`}
+                    >
+                      {uc.isDueToday ? "Aujourd'hui" : `+${uc.daysOverdue}j`}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-bold text-rose-400 mt-0.5">
+                    Reste : {formatFCFA(uc.remainingAmount)}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {uc.customerPhone && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenWhatsApp(uc.customerName, uc.customerPhone || '', uc.remainingAmount, uc.dueDate)}
+                      title="Relance WhatsApp immédiate"
+                      className="p-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 transition cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onOpenNewPayment(uc)}
+                    className="px-2 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition cursor-pointer"
+                  >
+                    Encaisser
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 5 Main Financial KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">

@@ -10,6 +10,7 @@ import {
   User,
   Phone,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Sparkles
 } from 'lucide-react';
@@ -329,6 +330,33 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Warning if credit limit exceeded */}
+          {(() => {
+            const selectedCust = customers.find(
+              (c) =>
+                c.id === customerId ||
+                (customerName.trim() && c.name.toLowerCase() === customerName.trim().toLowerCase())
+            );
+            if (!selectedCust?.creditLimit || selectedCust.creditLimit <= 0) return null;
+            const projectedDebt = (selectedCust.currentDebt || 0) + remainingPreview;
+            const isOverLimit = projectedDebt > selectedCust.creditLimit;
+            if (!isOverLimit) return null;
+            const excess = projectedDebt - selectedCust.creditLimit;
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-1">
+                <div className="flex items-center gap-2 font-bold text-amber-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>Plafond de crédit dépassé (+{formatFCFA(excess)})</span>
+                </div>
+                <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                  Plafond fixé pour <strong>{selectedCust.name}</strong> : {formatFCFA(selectedCust.creditLimit)}.
+                  Dette en cours : {formatFCFA(selectedCust.currentDebt)}. Nouvelle dette totale : <strong className="text-white">{formatFCFA(projectedDebt)}</strong>.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Dates: Date du crédit & Échéance */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

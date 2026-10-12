@@ -179,6 +179,147 @@ export function printReceiptDirect(business: Business, payment: Payment, credit?
   }, 250);
 }
 
+export function printThermalReceiptDirect(business: Business, payment: Payment, credit?: Credit) {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document || iframe.contentDocument;
+  if (!doc) {
+    window.print();
+    return;
+  }
+
+  const isFullyPaid = payment.remainingAfter <= 0;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>Ticket ${payment.reference}</title>
+        <style>
+          @page {
+            size: 58mm auto;
+            margin: 2mm;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Courier New', Courier, monospace, -apple-system, sans-serif;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 4px;
+            width: 100%;
+            max-width: 58mm;
+            font-size: 11px;
+            line-height: 1.25;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          .double-divider { border-top: 2px double #000; margin: 6px 0; }
+          .title { font-size: 13px; font-weight: 900; letter-spacing: 0.5px; }
+          .shop-name { font-size: 12px; font-weight: bold; margin: 2px 0; }
+          .row { display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; }
+          .amount-box {
+            text-align: center;
+            border: 1px solid #000;
+            padding: 6px 2px;
+            margin: 6px 0;
+          }
+          .amount { font-size: 15px; font-weight: 900; }
+          .remaining { font-size: 13px; font-weight: 900; }
+          .footer { font-size: 9px; text-align: center; margin-top: 8px; }
+          .cut-line { text-align: center; font-size: 8px; margin-top: 10px; color: #555; }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="title">DDS CONFIANCE</div>
+          <div class="shop-name">${business.name}</div>
+          <div>${business.city || 'Bamako'}${business.phone ? ' • ' + business.phone : ''}</div>
+          ${business.address ? `<div>${business.address}</div>` : ''}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="center bold">REÇU DE CAISSE N° ${payment.reference}</div>
+        <div class="center" style="font-size: 10px;">${formatDateBamako(payment.paymentDate, true)}</div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <span>Client :</span>
+          <span class="bold">${payment.customerName}</span>
+        </div>
+        ${payment.creditReference ? `
+        <div class="row">
+          <span>Réf Dette :</span>
+          <span>${payment.creditReference}</span>
+        </div>` : ''}
+        <div class="row">
+          <span>Règlement :</span>
+          <span class="bold">${PAYMENT_METHOD_LABELS[payment.paymentMethod] || payment.paymentMethod}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="amount-box">
+          <div style="font-size: 10px;">MONTANT ENCAISSÉ</div>
+          <div class="amount">+${formatFCFA(payment.amount)}</div>
+        </div>
+
+        <div class="amount-box" style="background: #fafafa;">
+          <div style="font-size: 10px;">NOUVEAU SOLDE RESTANT</div>
+          <div class="remaining">
+            ${isFullyPaid ? '0 FCFA (SOLDÉ !)' : formatFCFA(payment.remainingAfter)}
+          </div>
+        </div>
+
+        ${payment.notes ? `
+        <div style="font-size: 10px; font-style: italic; margin: 4px 0;">
+          Note: ${payment.notes}
+        </div>` : ''}
+
+        <div class="double-divider"></div>
+
+        <div class="footer">
+          <div>Merci de votre confiance !</div>
+          <div style="margin-top: 3px;">Diaby Digital Solution • Bamako</div>
+        </div>
+
+        <div class="cut-line">--------- ✂ DÉCOUPE TICKET ✂ ---------</div>
+      </body>
+    </html>
+  `;
+
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn("Thermal print error:", e);
+      window.print();
+    } finally {
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 3000);
+    }
+  }, 250);
+}
+
 export function printStatementDirect(
   business: Business,
   customer: Customer,

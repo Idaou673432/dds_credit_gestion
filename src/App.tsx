@@ -13,12 +13,13 @@ import { VerificationSuiteModal } from './components/VerificationSuiteModal';
 import { NewCreditModal } from './components/NewCreditModal';
 import { NewPaymentModal } from './components/NewPaymentModal';
 import { WhatsAppReminderModal } from './components/WhatsAppReminderModal';
+import { CustomerDetailModal } from './components/CustomerDetailModal';
 import { Customer, Credit, Payment } from './types';
 import { Loader2 } from 'lucide-react';
 import { LoginView } from './components/LoginView';
 
 const MainAppContent: React.FC = () => {
-  const { loading, currentUser, customers, credits, payments } = useAuth();
+  const { loading, currentUser, customers, credits, payments, activeBusiness } = useAuth();
 
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
 
@@ -28,6 +29,7 @@ const MainAppContent: React.FC = () => {
   const [isNewPaymentModalOpen, setIsNewPaymentModalOpen] = useState(false);
   const [preselectedCreditForPayment, setPreselectedCreditForPayment] = useState<Credit | null>(null);
   const [preselectedCustomerForCredit, setPreselectedCustomerForCredit] = useState<Customer | null>(null);
+  const [selectedCustomerForDetail, setSelectedCustomerForDetail] = useState<Customer | null>(null);
 
   // WhatsApp modal state
   const [whatsAppModalData, setWhatsAppModalData] = useState<{
@@ -75,11 +77,14 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       
-      {/* Header */}
+      {/* Header with Global Search */}
       <Header
         onOpenVerificationSuite={() => setIsVerificationSuiteOpen(true)}
-        onOpenNewCredit={() => handleOpenNewCredit()}
-        onOpenNewPayment={() => handleOpenNewPayment()}
+        onOpenNewCredit={(cust) => handleOpenNewCredit(cust)}
+        onOpenNewPayment={(cred) => handleOpenNewPayment(cred)}
+        onSelectCustomer={(cust) => setSelectedCustomerForDetail(cust)}
+        onOpenWhatsApp={(name, phone, debt) => handleOpenWhatsApp(name, phone, debt)}
+        onNavigateToCustomers={() => setCurrentTab('customers')}
       />
 
       {/* Main Body */}
@@ -169,6 +174,29 @@ const MainAppContent: React.FC = () => {
           amount={whatsAppModalData.amount}
           dueDate={whatsAppModalData.dueDate}
           onClose={() => setWhatsAppModalData(null)}
+        />
+      )}
+
+      {/* Customer Detail Modal from Global Search */}
+      {selectedCustomerForDetail && activeBusiness && (
+        <CustomerDetailModal
+          customer={selectedCustomerForDetail}
+          business={activeBusiness}
+          credits={credits}
+          payments={payments}
+          onClose={() => setSelectedCustomerForDetail(null)}
+          onOpenNewCredit={(cust) => {
+            setSelectedCustomerForDetail(null);
+            handleOpenNewCredit(cust);
+          }}
+          onOpenNewPayment={(cred) => {
+            setSelectedCustomerForDetail(null);
+            handleOpenNewPayment(cred);
+          }}
+          onOpenWhatsApp={(name, phone, debt) => {
+            setSelectedCustomerForDetail(null);
+            handleOpenWhatsApp(name, phone, debt);
+          }}
         />
       )}
 

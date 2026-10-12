@@ -41,6 +41,7 @@ export interface Customer {
   totalCredit: number;
   totalPaid: number;
   currentDebt: number;
+  creditLimit?: number;
   status: 'active' | 'archived';
   createdAt: string;
   updatedAt: string;

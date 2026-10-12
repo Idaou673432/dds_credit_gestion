@@ -44,7 +44,8 @@ export async function createCustomer(
   name: string,
   phone: string,
   address?: string,
-  notes?: string
+  notes?: string,
+  creditLimit?: number
 ): Promise<Customer> {
   const customerId = `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
@@ -59,6 +60,7 @@ export async function createCustomer(
     totalCredit: 0,
     totalPaid: 0,
     currentDebt: 0,
+    creditLimit: creditLimit && creditLimit > 0 ? Math.round(Number(creditLimit)) : 0,
     status: 'active',
     createdAt: now,
     updatedAt: now,
@@ -74,7 +76,7 @@ export async function createCustomer(
 
 export async function updateCustomer(
   customerId: string,
-  data: Partial<Pick<Customer, 'name' | 'phone' | 'address' | 'notes' | 'status'>>
+  data: Partial<Pick<Customer, 'name' | 'phone' | 'address' | 'notes' | 'status' | 'creditLimit'>>
 ): Promise<void> {
   try {
     await updateDoc(doc(db, 'customers', customerId), {

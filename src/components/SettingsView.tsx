@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatDateBamako } from '../lib/utils';
 import { UserRole } from '../types';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import {
   Settings,
   Building2,
@@ -16,7 +18,13 @@ import {
   MapPin,
   Sparkles,
   HelpCircle,
-  Key
+  Key,
+  HardDrive,
+  Download,
+  Upload,
+  Database,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -26,8 +34,23 @@ export const SettingsView: React.FC = () => {
     currentUser,
     userRole,
     setUserRole,
-    auditLogs
+    auditLogs,
+    pinCode,
+    updatePinCode,
+    customers,
+    credits,
+    payments
   } = useAuth();
+
+  const [newPin, setNewPin] = useState(pinCode);
+  const [showPinCode, setShowPinCode] = useState(false);
+  const [showNewPinInput, setShowNewPinInput] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+  const [pinError, setPinError] = useState('');
+
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  const [restoreSuccess, setRestoreSuccess] = useState(false);
 
   const [bizName, setBizName] = useState(activeBusiness?.name || '');
   const [bizPhone, setBizPhone] = useState(activeBusiness?.phone || '');
@@ -68,6 +91,87 @@ export const SettingsView: React.FC = () => {
       setSaveError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Export full backup
+  const handleExportBackup = () => {
+    if (!activeBusiness) return;
+    const backupObj = {
+      app: 'DDS Crédit Confiance',
+      exportVersion: '1.0',
+      exportDate: new Date().toISOString(),
+      business: activeBusiness,
+      customers,
+      credits,
+      payments,
+      auditLogs,
+    };
+    const jsonStr = JSON.stringify(backupObj, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Backup_DDS_Confiance_${activeBusiness.city || 'Bamako'}_${new Date().toISOString().substring(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import / Restore backup
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsRestoring(true);
+    setRestoreMessage(null);
+    setRestoreSuccess(false);
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      if (!parsed.customers || !parsed.credits || !parsed.payments) {
+        throw new Error('Fichier de sauvegarde invalide (éléments manquants).');
+      }
+
+      // Restore customers
+      for (const cust of parsed.customers) {
+        if (cust.id) {
+          await setDoc(doc(db, 'customers', cust.id), cust);
+        }
+      }
+
+      // Restore credits
+      for (const cred of parsed.credits) {
+        if (cred.id) {
+          await setDoc(doc(db, 'credits', cred.id), cred);
+        }
+      }
+
+      // Restore payments
+      for (const pay of parsed.payments) {
+        if (pay.id) {
+          await setDoc(doc(db, 'payments', pay.id), pay);
+        }
+      }
+
+      if (parsed.business && parsed.business.id) {
+        await setDoc(doc(db, 'businesses', parsed.business.id), parsed.business);
+      }
+
+      setRestoreSuccess(true);
+      setRestoreMessage(
+        `Restauration réussie : ${parsed.customers.length} clients, ${parsed.credits.length} crédits et ${parsed.payments.length} paiements restaurés avec succès.`
+      );
+      setTimeout(() => setRestoreMessage(null), 8000);
+    } catch (err: unknown) {
+      setRestoreSuccess(false);
+      setRestoreMessage(`Erreur de restauration : ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsRestoring(false);
+      e.target.value = '';
     }
   };
 
@@ -248,6 +352,88 @@ export const SettingsView: React.FC = () => {
             )}
           </div>
 
+          {/* Sauvegarde & Restauration Complète (JSON) */}
+          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <HardDrive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Sauvegarde & Restauration de Secours</h3>
+                  <p className="text-xs text-slate-400">Archivage complet hors-ligne et restauration Cloud en 1 clic</p>
+                </div>
+              </div>
+              <span className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-bold">
+                Format JSON
+              </span>
+            </div>
+
+            {restoreMessage && (
+              <div
+                className={`p-3 rounded-2xl border text-xs flex items-center gap-2 ${
+                  restoreSuccess
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}
+              >
+                {restoreSuccess ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                <span>{restoreMessage}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Export Button */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                <div>
+                  <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    Télécharger la Sauvegarde
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Génère un fichier de secours contenant vos {customers.length} clients, {credits.length} créances et {payments.length} reçus.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  className="w-full py-2.5 px-4 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Exporter les données (.json)</span>
+                </button>
+              </div>
+
+              {/* Import / Restore Button */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                <div>
+                  <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-emerald-400" />
+                    Restaurer une Sauvegarde
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Injecte vos données de secours directement dans Firestore (Bamako).
+                  </p>
+                </div>
+                <label className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border cursor-pointer ${
+                  isRestoring
+                    ? 'bg-slate-800 text-slate-500 border-slate-700 pointer-events-none'
+                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                }`}>
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isRestoring ? 'Restauration en cours...' : 'Importer un fichier (.json)'}</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportBackup}
+                    className="hidden"
+                    disabled={isRestoring || !isOwner}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* Right Col: RBAC Roles Matrix & DDS Solution branding */}
@@ -307,6 +493,110 @@ export const SettingsView: React.FC = () => {
             <p className="text-[11px] text-slate-400 italic pt-2 border-t border-slate-800">
               Astuce : Cliquez sur un rôle ci-dessus pour simuler en temps réel l'interface vue par votre caissier ou gestionnaire.
             </p>
+          </div>
+
+          {/* Code PIN de Sécurité */}
+          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+              <Key className="w-5 h-5 text-cyan-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Code PIN d'Accès Commerçant</h3>
+                <p className="text-xs text-slate-400">Accès rapide au comptoir (Caisse & Gestion)</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-300 font-semibold">Code PIN Actuel :</span>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 font-mono font-bold text-sm border border-cyan-500/30 tracking-widest">
+                    {showPinCode ? pinCode : '•••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPinCode(!showPinCode)}
+                    title={showPinCode ? 'Masquer le code PIN' : 'Afficher le code PIN'}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition cursor-pointer"
+                  >
+                    {showPinCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {pinSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <span>Nouveau code PIN enregistré !</span>
+                </div>
+              )}
+
+              {pinError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{pinError}</span>
+                </div>
+              )}
+
+              {isOwner && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (newPin.trim().length >= 4) {
+                      updatePinCode(newPin.trim());
+                      setPinSuccess(true);
+                      setPinError('');
+                      setTimeout(() => setPinSuccess(false), 3000);
+                    } else {
+                      setPinError('Le code PIN doit comporter au moins 4 chiffres.');
+                    }
+                  }}
+                  className="space-y-2 pt-2 border-t border-slate-700/60"
+                >
+                  <label className="block text-[11px] font-semibold text-slate-400">
+                    Définir un nouveau code PIN
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showNewPinInput ? 'text' : 'password'}
+                        maxLength={8}
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                        placeholder="•••••"
+                        className="w-full px-3 py-2 pr-9 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono tracking-widest text-cyan-400 focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPinInput(!showNewPinInput)}
+                        title={showNewPinInput ? 'Masquer' : 'Afficher'}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showNewPinInput ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <button
+                      type="submit"
+                      className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition cursor-pointer"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updatePinCode('00223');
+                      setNewPin('00223');
+                      setPinSuccess(true);
+                      setPinError('');
+                      setTimeout(() => setPinSuccess(false), 3000);
+                    }}
+                    className="text-[11px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                  >
+                    Réinitialiser au code par défaut (Mali)
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
 
           {/* Diaby Digital Solution Branding */}

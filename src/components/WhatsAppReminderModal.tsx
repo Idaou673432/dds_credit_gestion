@@ -8,7 +8,8 @@ import {
   Phone,
   Copy,
   Check,
-  Info
+  Languages,
+  Sparkles
 } from 'lucide-react';
 
 interface WhatsAppReminderModalProps {
@@ -19,6 +20,8 @@ interface WhatsAppReminderModalProps {
   onClose: () => void;
 }
 
+type LanguageOption = 'fr' | 'bm' | 'mixte';
+
 export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
   customerName,
   phone,
@@ -27,11 +30,30 @@ export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
   onClose,
 }) => {
   const { activeBusiness } = useAuth();
+  const bizName = activeBusiness?.name || 'notre boutique';
+  const bizPhone = activeBusiness?.phone || '';
+  const dateStr = dueDate ? ` (échéance convenue : ${formatDateBamako(dueDate)})` : '';
+  const dateStrBm = dueDate ? ` (waati min banna : ${formatDateBamako(dueDate)})` : '';
 
-  const defaultTemplate = `Bonjour ${customerName},\n\nSauf erreur de notre part, votre solde de crédit chez ${activeBusiness?.name || 'notre boutique'} s'élève actuellement à ${formatFCFA(amount)}${dueDate ? ` (échéance convenue : ${formatDateBamako(dueDate)})` : ''}.\n\nMerci de bien vouloir passer à la boutique pour régulariser votre situation ou d'effectuer le paiement par Orange Money / Moov Money au ${activeBusiness?.phone || ''}.\n\nCordialement,\n${activeBusiness?.name || 'Diaby Digital Solution'}`;
+  const getTemplate = (lang: LanguageOption) => {
+    switch (lang) {
+      case 'fr':
+        return `Bonjour ${customerName},\n\nSauf erreur de notre part, votre solde de crédit chez ${bizName} s'élève actuellement à ${formatFCFA(amount)}${dateStr}.\n\nMerci de bien vouloir passer à la boutique pour régulariser votre situation ou d'effectuer le paiement par Orange Money / Moov Money au ${bizPhone}.\n\nCordialement,\n${bizName}`;
+      case 'bm':
+        return `I ni ce ${customerName},\n\nKa kɛɲɛ ni an ka lase ye, i ka juru tolen bè ${bizName} la : ${formatFCFA(amount)}${dateStrBm}.\n\nAw b'a lase an ma butiki la walima ka dɔ sara Orange Money / Moov Money fɛ barika la : ${bizPhone}.\n\nAn b'aw fo kosɛbɛ,\n${bizName}`;
+      case 'mixte':
+        return `I ni ce ${customerName},\n\nNous vous prions de bien vouloir passer à la boutique pour régulariser votre solde de crédit chez ${bizName} : ${formatFCFA(amount)}${dateStr}.\n\nPossibilité de régler au comptoir ou par Orange Money / Moov Money au ${bizPhone}.\n\nI ni ce kosɛbɛ,\n${bizName}`;
+    }
+  };
 
-  const [message, setMessage] = useState(defaultTemplate);
+  const [activeLang, setActiveLang] = useState<LanguageOption>('fr');
+  const [message, setMessage] = useState(() => getTemplate('fr'));
   const [copied, setCopied] = useState(false);
+
+  const handleSelectLang = (lang: LanguageOption) => {
+    setActiveLang(lang);
+    setMessage(getTemplate(lang));
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message);
@@ -55,8 +77,8 @@ export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
               <MessageCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Rappel de Crédit WhatsApp</h3>
-              <p className="text-xs text-slate-400">Message prérempli et personnalisable</p>
+              <h3 className="text-base font-bold text-white">Rappel WhatsApp Client</h3>
+              <p className="text-xs text-slate-400">Modèles en Français, Bambara et Mixte</p>
             </div>
           </div>
           <button
@@ -81,18 +103,59 @@ export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
           </div>
         </div>
 
-        {/* Notice to merchant */}
-        <div className="mt-3 p-3 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-[11px] text-cyan-300 flex items-start gap-2">
-          <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
-          <p>
-            Vous gardez le contrôle total : vous pouvez relire ou modifier ce texte avant d'ouvrir WhatsApp. L'envoi est validé manuellement par vos soins.
-          </p>
+        {/* Language Selector */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Languages className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Choisir la langue du modèle :</span>
+            </label>
+            <span className="text-[10px] text-cyan-400 font-medium">Bambara / Français</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleSelectLang('fr')}
+              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeLang === 'fr'
+                  ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-sm'
+                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              <span>🇫🇷 Français</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectLang('bm')}
+              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeLang === 'bm'
+                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-sm'
+                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              <span>🇲🇱 Bambara</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectLang('mixte')}
+              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeLang === 'mixte'
+                  ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-sm'
+                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              <span>🤝 Mixte</span>
+            </button>
+          </div>
         </div>
 
         {/* Text Area for custom message */}
         <div className="mt-4">
           <label className="block text-xs font-semibold text-slate-300 mb-1">
-            Texte du message
+            Texte du message (modifiable avant envoi) :
           </label>
           <textarea
             rows={7}

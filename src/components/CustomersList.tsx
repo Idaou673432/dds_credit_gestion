@@ -44,6 +44,7 @@ export const CustomersList: React.FC<CustomersListProps> = ({
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [creditLimit, setCreditLimit] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -75,6 +76,7 @@ export const CustomersList: React.FC<CustomersListProps> = ({
     setPhone('');
     setAddress('');
     setNotes('');
+    setCreditLimit('');
     setFormError('');
     setIsFormOpen(true);
   };
@@ -86,6 +88,7 @@ export const CustomersList: React.FC<CustomersListProps> = ({
     setPhone(customer.phone);
     setAddress(customer.address || '');
     setNotes(customer.notes || '');
+    setCreditLimit(customer.creditLimit || '');
     setFormError('');
     setIsFormOpen(true);
   };
@@ -106,15 +109,17 @@ export const CustomersList: React.FC<CustomersListProps> = ({
     setIsSubmitting(true);
     setFormError('');
     try {
+      const parsedLimit = creditLimit === '' ? 0 : Math.max(0, Number(creditLimit));
       if (editingCustomer) {
         await updateCustomer(editingCustomer.id, {
           name: name.trim(),
           phone: phone.trim(),
           address: address.trim(),
           notes: notes.trim(),
+          creditLimit: parsedLimit,
         });
       } else {
-        await createCustomer(activeBusiness.id, name, phone, address, notes);
+        await createCustomer(activeBusiness.id, name, phone, address, notes, parsedLimit);
       }
       setIsFormOpen(false);
     } catch (err: unknown) {
@@ -414,15 +419,19 @@ export const CustomersList: React.FC<CustomersListProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Commentaire / Notes (facultatif)
+                  Plafond de crédit autorisé (FCFA) (facultatif)
                 </label>
-                <textarea
-                  rows={2}
-                  placeholder="Ex : Voisin de quartier, commerçant de tissu..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Ex : 200 000 FCFA (0 ou vide = sans plafond)"
+                  value={creditLimit}
+                  onChange={(e) => setCreditLimit(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                  className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Alerte de sécurité si le cumul des dettes du client dépasse ce montant.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
