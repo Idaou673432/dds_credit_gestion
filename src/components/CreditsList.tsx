@@ -12,9 +12,7 @@ import {
   AlertTriangle,
   Receipt,
   MessageCircle,
-  Calendar,
-  User,
-  Filter
+  Calendar
 } from 'lucide-react';
 
 interface CreditsListProps {
@@ -35,20 +33,16 @@ export const CreditsList: React.FC<CreditsListProps> = ({
   const { credits, userRole } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paid' | 'overdue'>('all');
 
   const canCreate = userRole === 'owner' || userRole === 'manager';
 
   const filteredCredits = credits.filter((credit) => {
-    const matchSearch =
+    if (!searchTerm.trim()) return true;
+    return (
       credit.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       credit.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      credit.description.toLowerCase().includes(searchTerm.toLowerCase());
-
-    if (!matchSearch) return false;
-
-    if (statusFilter === 'all') return true;
-    return credit.status === statusFilter;
+      credit.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   });
 
   const totalFilteredRemaining = filteredCredits.reduce((s, c) => s + c.remainingAmount, 0);
@@ -80,50 +74,16 @@ export const CreditsList: React.FC<CreditsListProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Rechercher par client, référence (ex: CR-...) ou marchandise..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'Tous' },
-            { id: 'active', label: 'En cours' },
-            { id: 'overdue', label: 'En retard' },
-            { id: 'paid', label: 'Soldés' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                statusFilter === tab.id
-                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Summary Mini Bar */}
-      <div className="px-4 py-2 rounded-xl bg-slate-950/40 border border-slate-850 flex items-center justify-between text-xs text-slate-400">
-        <span>{filteredCredits.length} crédit(s) affiché(s)</span>
-        <span>
-          Solde restant total filtré :{' '}
-          <strong className="text-rose-400">{formatFCFA(totalFilteredRemaining)}</strong>
-        </span>
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          placeholder="Rechercher par client, référence (ex: CR-...) ou marchandise..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition shadow-sm"
+        />
       </div>
 
       {/* List of Credits */}
@@ -228,33 +188,20 @@ export const CreditsList: React.FC<CreditsListProps> = ({
                     </p>
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex items-center gap-1.5">
-                    {!isPaid && credit.customerPhone && (
-                      <button
-                        onClick={() =>
-                          onOpenWhatsApp(
-                            credit.customerName,
-                            credit.customerPhone || '',
-                            credit.remainingAmount,
-                            credit.dueDate
-                          )
-                        }
-                        title="Envoyer un rappel WhatsApp"
-                        className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition cursor-pointer"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                    )}
-
-                    {!isPaid && (
+                  {/* Action: Single clear direct primary button */}
+                  <div>
+                    {!isPaid ? (
                       <button
                         onClick={() => onOpenNewPayment(credit)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition cursor-pointer"
                       >
-                        <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-                        Rembourser
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Rembourser</span>
                       </button>
+                    ) : (
+                      <span className="text-xs font-bold text-emerald-400 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        Soldé ✓
+                      </span>
                     )}
                   </div>
                 </div>

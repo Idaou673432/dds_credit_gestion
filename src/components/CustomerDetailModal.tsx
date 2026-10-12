@@ -3,6 +3,7 @@ import { Customer, Credit, Payment, Business } from '../types';
 import { formatFCFA, formatDateBamako, PAYMENT_METHOD_LABELS } from '../lib/utils';
 import { generateCustomerStatementPDF } from '../lib/pdf';
 import { printStatementDirect } from '../lib/print';
+import { useAuth } from '../context/AuthContext';
 import {
   X,
   Phone,
@@ -17,7 +18,8 @@ import {
   CreditCard,
   Receipt,
   User,
-  Clock
+  Clock,
+  ChevronDown
 } from 'lucide-react';
 
 interface CustomerDetailModalProps {
@@ -41,10 +43,14 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   onOpenNewPayment,
   onOpenWhatsApp,
 }) => {
+  const { userRole } = useAuth();
+  const canCreateCredit = userRole === 'owner' || userRole === 'manager';
+
   const customerCredits = credits.filter((c) => c.customerId === customer.id);
   const customerPayments = payments.filter((p) => p.customerId === customer.id);
 
   const hasDebt = customer.currentDebt > 0;
+  const firstUnpaidCredit = customerCredits.find((c) => c.remainingAmount > 0);
 
   const handleDownloadStatement = () => {
     generateCustomerStatementPDF(business, customer, customerCredits, customerPayments);
@@ -132,47 +138,36 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Action Toolbar */}
-        <div className="px-6 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900">
-          <div className="flex items-center gap-2">
+        {/* Simple Action Toolbar */}
+        <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-900">
+          {hasDebt && firstUnpaidCredit ? (
+            <button
+              onClick={() => onOpenNewPayment(firstUnpaidCredit)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20 transition cursor-pointer"
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              <span>Encaisser un versement</span>
+            </button>
+          ) : canCreateCredit ? (
             <button
               onClick={() => onOpenNewCredit(customer)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-cyan-500/20 transition cursor-pointer"
             >
               <CreditCard className="w-3.5 h-3.5" />
-              Nouveau Crédit
+              <span>Nouveau Crédit</span>
             </button>
+          ) : (
+            <span className="text-xs text-slate-400 font-medium">Fiche client</span>
+          )}
 
-            {hasDebt && (
-              <button
-                onClick={() =>
-                  onOpenWhatsApp(customer.name, customer.phone, customer.currentDebt)
-                }
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition cursor-pointer"
-              >
-                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                Rappel WhatsApp
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrintStatement}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-cyan-400" />
-              Imprimer
-            </button>
-
-            <button
-              onClick={handleDownloadStatement}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition cursor-pointer shadow-sm"
-            >
-              <Download className="w-3.5 h-3.5" />
-              PDF Relevé
-            </button>
-          </div>
+          <button
+            onClick={handleDownloadStatement}
+            title="Télécharger le relevé de compte en PDF"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Relevé PDF</span>
+          </button>
         </div>
 
         {/* Body tabs or tables */}

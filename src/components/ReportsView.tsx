@@ -21,7 +21,8 @@ import {
   Clock,
   Filter,
   CheckCircle2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ChevronDown
 } from 'lucide-react';
 
 export const ReportsView: React.FC = () => {
@@ -32,6 +33,7 @@ export const ReportsView: React.FC = () => {
   >('debtors');
 
   const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const reportA4Ref = useRef<HTMLDivElement>(null);
 
@@ -237,6 +239,15 @@ export const ReportsView: React.FC = () => {
     exportToCSV(`DDS_Resume_Periode_${periodFilter}_${new Date().toISOString().substring(0, 10)}`, headers, rows);
   };
 
+  const handleExportCurrentCSV = () => {
+    setShowExportMenu(false);
+    if (activeReportTab === 'debtors') handleExportDebtorsCSV();
+    else if (activeReportTab === 'credits') handleExportCreditsCSV();
+    else if (activeReportTab === 'payments') handleExportPaymentsCSV();
+    else if (activeReportTab === 'overdue') handleExportCreditsCSV();
+    else handleExportPeriodSummaryCSV();
+  };
+
   return (
     <div className="space-y-6">
       
@@ -262,29 +273,58 @@ export const ReportsView: React.FC = () => {
             Rapports & Synthèses Financières
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Impression propre en format A4, exports PDF avec logo et fichiers Excel (CSV).
+            Génération automatique de rapports A4, fiches comptables et exports de données.
           </p>
         </div>
 
-        {/* Global Print & Export Toolbar */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handlePrintA4()}
-            title="Imprimer ce rapport en format A4 propre avec en-tête et logo"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-cyan-400 border border-slate-700 text-xs font-bold transition cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Imprimer (A4)</span>
-          </button>
-
+        {/* Simplified Action Toolbar: Single Main Button Visible + Secondary Menu */}
+        <div className="flex items-center gap-2 relative">
+          {/* THE SINGLE PRIMARY BUTTON */}
           <button
             onClick={handleDownloadPDFReport}
             title="Télécharger ce rapport en document PDF format A4"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition cursor-pointer shadow-md shadow-cyan-500/20"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-black transition cursor-pointer shadow-md shadow-cyan-500/20"
           >
             <Download className="w-4 h-4" />
-            <span>PDF (A4)</span>
+            <span>Télécharger PDF (A4)</span>
           </button>
+
+          {/* Secondary Options Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer"
+            >
+              <span>Options d'export</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showExportMenu && (
+              <div
+                className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150"
+                onMouseLeave={() => setShowExportMenu(false)}
+              >
+                <button
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    handlePrintA4();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 hover:text-cyan-300 hover:bg-slate-800 transition text-left cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-cyan-400" />
+                  <span>Imprimer en direct (A4)</span>
+                </button>
+
+                <button
+                  onClick={handleExportCurrentCSV}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-emerald-400 hover:bg-emerald-500/10 transition text-left cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                  <span>Exporter le tableau en Excel (CSV)</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -325,23 +365,13 @@ export const ReportsView: React.FC = () => {
       {/* Report 1: Clients Débiteurs */}
       {activeReportTab === 'debtors' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-white">
-                Liste des Clients avec Dette en Cours ({debtorCustomers.length})
-              </p>
-              <p className="text-xs text-rose-400 mt-0.5">
-                Total des créances à recouvrer : <strong>{formatFCFA(totalDebtorDebt)}</strong>
-              </p>
-            </div>
-
-            <button
-              onClick={handleExportDebtorsCSV}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 text-xs font-bold transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              Exporter en CSV (Excel)
-            </button>
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+            <p className="text-xs font-bold text-white">
+              Liste des Clients avec Dette en Cours ({debtorCustomers.length})
+            </p>
+            <p className="text-xs text-rose-400 mt-0.5">
+              Total des créances à recouvrer : <strong>{formatFCFA(totalDebtorDebt)}</strong>
+            </p>
           </div>
 
           <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
@@ -386,21 +416,11 @@ export const ReportsView: React.FC = () => {
       {/* Report 2: Crédits Accordés */}
       {activeReportTab === 'credits' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-white">Registre exhaustif des crédits accordés</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Total accordé : {formatFCFA(credits.reduce((s, c) => s + c.amount, 0))}
-              </p>
-            </div>
-
-            <button
-              onClick={handleExportCreditsCSV}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 text-xs font-bold transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              Exporter en CSV (Excel)
-            </button>
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+            <p className="text-xs font-bold text-white">Registre exhaustif des crédits accordés</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Total accordé : {formatFCFA(credits.reduce((s, c) => s + c.amount, 0))}
+            </p>
           </div>
 
           <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
@@ -451,21 +471,11 @@ export const ReportsView: React.FC = () => {
       {/* Report 3: Remboursements */}
       {activeReportTab === 'payments' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-white">Journal des encaissements</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Total encaissé : {formatFCFA(payments.reduce((s, p) => s + p.amount, 0))}
-              </p>
-            </div>
-
-            <button
-              onClick={handleExportPaymentsCSV}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 text-xs font-bold transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              Exporter en CSV (Excel)
-            </button>
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+            <p className="text-xs font-bold text-white">Journal des encaissements</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Total encaissé : {formatFCFA(payments.reduce((s, p) => s + p.amount, 0))}
+            </p>
           </div>
 
           <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
@@ -582,14 +592,6 @@ export const ReportsView: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            <button
-              onClick={handleExportPeriodSummaryCSV}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-emerald-400 border border-slate-700 text-xs font-bold transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              Exporter ce bilan en CSV
-            </button>
           </div>
 
           {/* Metric cards for the period */}

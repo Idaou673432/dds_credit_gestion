@@ -81,10 +81,15 @@ export const LoginView: React.FC = () => {
       <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-400 p-0.5 shadow-lg shadow-cyan-500/20">
-              <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center font-black text-sm text-cyan-400">
-                DDS
-              </div>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-400 p-0.5 shadow-lg shadow-cyan-500/20 overflow-hidden">
+              <img 
+                src="/app-icon.png" 
+                alt="DDS Crédit Confiance" 
+                className="w-full h-full object-cover rounded-[14px]"
+                onError={(e) => {
+                  (e.currentTarget.style as any).display = 'none';
+                }}
+              />
             </div>
             <div>
               <h1 className="text-base font-bold text-white tracking-tight">

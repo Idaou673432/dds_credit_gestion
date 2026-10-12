@@ -11,7 +11,10 @@ import {
   Download,
   CheckCircle2,
   Receipt,
-  FileText
+  FileText,
+  MessageCircle,
+  Share2,
+  ChevronDown
 } from 'lucide-react';
 
 interface PaymentReceiptModalProps {
@@ -45,6 +48,34 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
   const handlePrintThermal = () => {
     printThermalReceiptDirect(business, payment, credit);
+  };
+
+  const handleShareWhatsAppReceipt = () => {
+    const phone = credit?.customerPhone || '';
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const message = `*REÇU DE PAIEMENT - ${business.name}*\n` +
+      `Client : ${payment.customerName}\n` +
+      `N° Reçu : ${payment.reference}\n` +
+      `Montant encaissé : ${formatFCFA(payment.amount)}\n` +
+      `Mode : ${PAYMENT_METHOD_LABELS[payment.paymentMethod]}\n` +
+      `Nouveau solde restant : ${formatFCFA(payment.remainingAfter)}${isFullyPaid ? ' (Dette entièrement soldée !)' : ''}\n` +
+      `Date : ${formatDateBamako(payment.paymentDate, true)}\n\n` +
+      `Merci pour votre confiance ! - DDS Crédit Confiance`;
+    const encoded = encodeURIComponent(message);
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone.startsWith('223') ? cleanPhone : `223${cleanPhone}`}?text=${encoded}`
+      : `https://api.whatsapp.com/send?text=${encoded}`;
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      window.location.href = url;
+    }
   };
 
   return (
@@ -174,15 +205,23 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
             </div>
 
-            {/* Thermal Print Action */}
-            <div className="w-full max-w-[320px] mt-4 flex gap-2">
+            {/* Thermal Actions: Primary Print + Secondary WhatsApp */}
+            <div className="w-full max-w-[320px] mt-4 flex items-center gap-2">
               <button
                 type="button"
                 onClick={handlePrintThermal}
                 className="flex-1 py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Imprimer Ticket Thermique (58mm)</span>
+                <span>Imprimer Ticket (58mm)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleShareWhatsAppReceipt}
+                title="Partager le reçu sur WhatsApp"
+                className="p-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/30 transition cursor-pointer flex items-center justify-center"
+              >
+                <MessageCircle className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -280,23 +319,31 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
               </div>
             </div>
 
-            {/* A4 Actions */}
+            {/* A4 Actions: Primary PDF + Print + WhatsApp */}
             <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
+                onClick={handleDownloadPDF}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Télécharger PDF A4</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => handleReactToPrint()}
-                className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Imprimer (A4)</span>
               </button>
               <button
                 type="button"
-                onClick={handleDownloadPDF}
-                className="flex-1 py-2 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                onClick={handleShareWhatsAppReceipt}
+                title="Partager le reçu sur WhatsApp"
+                className="p-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/30 transition cursor-pointer flex items-center justify-center"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Télécharger PDF A4</span>
+                <MessageCircle className="w-4 h-4" />
               </button>
             </div>
 

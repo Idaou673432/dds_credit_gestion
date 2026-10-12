@@ -131,16 +131,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Mali / DDS Brand Tag in Sidebar */}
         <div className="pt-4 border-t border-slate-800">
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400">
-            <p className="font-bold text-slate-200 flex items-center gap-1.5">
-              <span>🇲🇱</span> Conçu pour le Mali
-            </p>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Diaby Digital Solution (DDS)
-            </p>
-            <p className="text-[10px] text-cyan-400 font-medium mt-0.5">
-              Devise : FCFA • Fuseau : Bamako
-            </p>
+          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-3">
+            <img 
+              src="/app-icon.png" 
+              alt="DDS Crédit Confiance" 
+              className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" 
+              onError={(e) => {
+                (e.currentTarget.style as any).display = 'none';
+              }}
+            />
+            <div className="min-w-0">
+              <p className="font-bold text-slate-200 flex items-center gap-1.5 truncate">
+                <span>🇲🇱</span> Conçu pour le Mali
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                Diaby Digital Solution (DDS)
+              </p>
+              <p className="text-[10px] text-cyan-400 font-medium truncate">
+                FCFA • Bamako
+              </p>
+            </div>
           </div>
         </div>
       </aside>

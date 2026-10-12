@@ -165,12 +165,16 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo & Name */}
           <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
             <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-sky-400 p-0.5 shadow-lg shadow-cyan-500/20">
-                <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center">
-                  <span className="font-extrabold text-sm sm:text-base tracking-tighter bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">
-                    DDS
-                  </span>
-                </div>
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-sky-400 p-0.5 shadow-lg shadow-cyan-500/20 overflow-hidden">
+                <img 
+                  src="/app-icon.png" 
+                  alt="DDS Crédit Confiance" 
+                  className="w-full h-full object-cover rounded-[14px]"
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    (e.currentTarget.style as any).display = 'none';
+                  }}
+                />
               </div>
               <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-900" title="Système Opérationnel" />
             </div>
@@ -287,33 +291,26 @@ export const Header: React.FC<HeaderProps> = ({
                               {hasDebt ? formatFCFA(cust.currentDebt) : 'À jour (0 FCFA)'}
                             </span>
 
-                            <div className="flex items-center gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                title="Nouveau crédit"
-                                onClick={(e) => handleNewCreditForCustomer(cust, e)}
-                                className="p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 transition"
-                              >
-                                <CreditCard className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                type="button"
-                                title="Encaisser un versement"
-                                onClick={(e) => handlePaymentForCustomer(cust, e)}
-                                className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 transition"
-                              >
-                                <Receipt className="w-3.5 h-3.5" />
-                              </button>
-
-                              {hasDebt && onOpenWhatsApp && (
+                            {/* Single Primary Action in Search Result */}
+                            <div className="flex items-center gap-1.5">
+                              {hasDebt ? (
                                 <button
                                   type="button"
-                                  title="Rappel WhatsApp"
-                                  onClick={(e) => handleWhatsAppForCustomer(cust, e)}
-                                  className="p-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500 text-teal-300 hover:text-slate-950 transition"
+                                  title="Encaisser un versement"
+                                  onClick={(e) => handlePaymentForCustomer(cust, e)}
+                                  className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-[11px] font-bold transition flex items-center gap-1"
                                 >
-                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  <Receipt className="w-3 h-3" />
+                                  <span>Encaisser</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  title="Consulter la fiche client"
+                                  onClick={() => handleSelectCustomerItem(cust)}
+                                  className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium transition cursor-pointer"
+                                >
+                                  Voir
                                 </button>
                               )}
                             </div>
@@ -410,17 +407,6 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right Action Bar */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
             
-            {/* Audit / Test Suite Button */}
-            <button
-              onClick={onOpenVerificationSuite}
-              title="Centre de vérification des 10 règles financières obligatoires"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 hover:border-cyan-500/50 text-xs font-semibold transition cursor-pointer"
-            >
-              <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Tests 10/10</span>
-              <span className="sm:hidden">Tests</span>
-            </button>
-
             {/* PWA Install Button */}
             <PWAInstallButton />
 
@@ -457,10 +443,27 @@ export const Header: React.FC<HeaderProps> = ({
                       <p className="text-[11px] text-cyan-400 mt-0.5">Boutique : {activeBusiness?.name}</p>
                     </div>
 
+                    {/* Verification Suite / Tests shortcut hidden inside profile menu */}
+                    <div className="p-2 border-b border-slate-800">
+                      <button
+                        onClick={() => {
+                          setShowRoleMenu(false);
+                          onOpenVerificationSuite();
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-cyan-300 text-xs font-medium transition cursor-pointer border border-slate-700/60"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Audit & Tests (10/10)</span>
+                        </div>
+                        <span className="text-[10px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded font-mono font-bold">OK</span>
+                      </button>
+                    </div>
+
                     {/* Role switcher */}
                     <div className="p-2 border-b border-slate-800">
                       <p className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-                        Changer de rôle (Simulation) :
+                        Rôle actif :
                       </p>
                       <div className="grid grid-cols-3 gap-1">
                         {(['owner', 'manager', 'cashier'] as UserRole[]).map((r) => (
@@ -470,16 +473,21 @@ export const Header: React.FC<HeaderProps> = ({
                               setUserRole(r);
                               setShowRoleMenu(false);
                             }}
-                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                            className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
                               userRole === r
                                 ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
                             }`}
                           >
-                            {r === 'owner' ? 'Proprio' : r === 'manager' ? 'Gestion' : 'Caissier'}
+                            {r === 'owner' ? 'Propriétaire' : r === 'manager' ? 'Gérant' : 'Caissier'}
                           </button>
                         ))}
                       </div>
+                      <p className="text-[10px] text-cyan-400/90 mt-2 px-1 leading-tight font-medium">
+                        {userRole === 'owner' && '👑 Propriétaire : Accès total, paramètres boutique, code PIN, octroi de crédits et encaissements.'}
+                        {userRole === 'manager' && '👔 Gérant : Gestion clients, octroi des crédits, encaissements et relances WhatsApp.'}
+                        {userRole === 'cashier' && '🪙 Caissier : Mode caisse prioritaire (encaissements des versements et délivrance des reçus).'}
+                      </p>
                     </div>
 
                     <button

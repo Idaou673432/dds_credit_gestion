@@ -63,7 +63,17 @@ export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
 
   const handleOpenWhatsApp = () => {
     const url = generateWhatsAppUrl(phone, message);
-    window.open(url, '_blank');
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      window.location.href = url;
+    }
   };
 
   return (

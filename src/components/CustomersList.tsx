@@ -17,7 +17,8 @@ import {
   Edit2,
   Archive,
   RotateCcw,
-  X
+  X,
+  Receipt
 } from 'lucide-react';
 
 interface CustomersListProps {
@@ -34,7 +35,6 @@ export const CustomersList: React.FC<CustomersListProps> = ({
   const { customers, credits, payments, activeBusiness, userRole } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterDebt, setFilterDebt] = useState<'all' | 'debtors' | 'cleared' | 'archived'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // Modal for new/edit customer
@@ -50,24 +50,14 @@ export const CustomersList: React.FC<CustomersListProps> = ({
 
   const canEdit = userRole === 'owner' || userRole === 'manager';
 
-  // Filter logic
+  // Simple search filter: show active customers matching search
   const filteredCustomers = customers.filter((cust) => {
-    const matchSearch =
+    if (cust.status === 'archived') return false;
+    if (!searchTerm.trim()) return true;
+    return (
       cust.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cust.phone.includes(searchTerm);
-
-    if (!matchSearch) return false;
-
-    if (filterDebt === 'debtors') {
-      return cust.status === 'active' && cust.currentDebt > 0;
-    }
-    if (filterDebt === 'cleared') {
-      return cust.status === 'active' && cust.currentDebt === 0;
-    }
-    if (filterDebt === 'archived') {
-      return cust.status === 'archived';
-    }
-    return cust.status === 'active';
+      cust.phone.includes(searchTerm)
+    );
   });
 
   const handleOpenCreate = () => {
@@ -165,42 +155,16 @@ export const CustomersList: React.FC<CustomersListProps> = ({
         )}
       </div>
 
-      {/* Filters & Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Rechercher par nom ou numéro de téléphone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Status Filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'Tous' },
-            { id: 'debtors', label: 'Débiteurs' },
-            { id: 'cleared', label: 'Soldés' },
-            { id: 'archived', label: 'Archivés' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilterDebt(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                filterDebt === tab.id
-                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      {/* Simple Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          placeholder="Rechercher par nom ou numéro de téléphone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition shadow-sm"
+        />
       </div>
 
       {/* Customer Cards List */}
@@ -281,49 +245,35 @@ export const CustomersList: React.FC<CustomersListProps> = ({
                   </div>
                 </div>
 
-                {/* Card Actions Footer */}
-                <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-800/80">
-                  <span className="text-[11px] text-cyan-400 font-medium group-hover:underline">
-                    Voir la fiche complète →
+                {/* Card Actions Footer: Simple and clean */}
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-800/80">
+                  {hasDebt ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const unpaid = credits.find((c) => c.customerId === cust.id && c.remainingAmount > 0);
+                        if (unpaid) {
+                          onOpenNewPayment(unpaid);
+                        } else {
+                          setSelectedCustomer(cust);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition cursor-pointer"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Encaisser</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-medium text-emerald-400/80">
+                      À jour (0 FCFA)
+                    </span>
+                  )}
+
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-cyan-400 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-transform">
+                    <span>Voir fiche</span>
+                    <span>→</span>
                   </span>
-
-                  <div className="flex items-center gap-1">
-                    {hasDebt && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenWhatsApp(cust.name, cust.phone, cust.currentDebt);
-                        }}
-                        title="Rappel WhatsApp"
-                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition cursor-pointer"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {canEdit && (
-                      <>
-                        <button
-                          onClick={(e) => handleOpenEdit(cust, e)}
-                          title="Modifier les coordonnées"
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => handleToggleArchive(cust, e)}
-                          title={cust.status === 'active' ? 'Archiver' : 'Désarchiver'}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition cursor-pointer"
-                        >
-                          {cust.status === 'active' ? (
-                            <Archive className="w-3.5 h-3.5" />
-                          ) : (
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </>
-                    )}
-                  </div>
                 </div>
 
               </div>

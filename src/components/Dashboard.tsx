@@ -15,7 +15,9 @@ import {
   Clock,
   ShieldCheck,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  MoreHorizontal
 } from 'lucide-react';
 import { Credit, Payment } from '../types';
 
@@ -102,7 +104,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Banner & Quick Shortcuts */}
+      {/* Top Banner & Main Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl border border-slate-800 shadow-xl">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
@@ -116,33 +118,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* Quick Action Shortcuts */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={onOpenNewCustomer}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold border border-slate-700 hover:border-slate-600 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-cyan-400" />
-            Nouveau client
-          </button>
-
-          {canCreateCredit && (
+        {/* Main Action Button */}
+        <div>
+          {canCreateCredit ? (
             <button
               onClick={onOpenNewCredit}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-cyan-500/20 transition cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-cyan-500/20 transition cursor-pointer"
             >
-              <CreditCard className="w-3.5 h-3.5" />
-              Nouveau crédit
+              <CreditCard className="w-4 h-4" />
+              <span>Nouveau Crédit</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onOpenNewPayment()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Encaisser un versement</span>
             </button>
           )}
-
-          <button
-            onClick={() => onOpenNewPayment()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition cursor-pointer"
-          >
-            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-            Nouveau remboursement
-          </button>
         </div>
       </div>
 
@@ -189,21 +183,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {uc.customerPhone && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenWhatsApp(uc.customerName, uc.customerPhone || '', uc.remainingAmount, uc.dueDate)}
-                      title="Relance WhatsApp immédiate"
-                      className="p-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 transition cursor-pointer"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                <div className="flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => onOpenNewPayment(uc)}
-                    className="px-2 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition cursor-pointer"
                   >
                     Encaisser
                   </button>

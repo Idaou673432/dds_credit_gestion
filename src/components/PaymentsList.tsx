@@ -33,22 +33,16 @@ export const PaymentsList: React.FC<PaymentsListProps> = ({
   const { payments, credits, activeBusiness } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<Payment | null>(null);
 
   const filteredPayments = payments.filter((pay) => {
-    const matchSearch =
+    if (!searchTerm.trim()) return true;
+    return (
       pay.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pay.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (pay.creditReference && pay.creditReference.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    if (!matchSearch) return false;
-
-    if (methodFilter === 'all') return true;
-    return pay.paymentMethod === methodFilter;
+      (pay.creditReference && pay.creditReference.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
   });
-
-  const totalFilteredAmount = filteredPayments.reduce((s, p) => s + p.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -74,52 +68,16 @@ export const PaymentsList: React.FC<PaymentsListProps> = ({
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Rechercher par client, référence reçu (REC-...) ou crédit..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Payment Method Filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'Tous' },
-            { id: 'cash', label: 'Espèces' },
-            { id: 'orange_money', label: 'Orange Money' },
-            { id: 'moov_money', label: 'Moov Money' },
-            { id: 'bank_transfer', label: 'Virement' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setMethodFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                methodFilter === tab.id
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-750'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Mini Summary */}
-      <div className="px-4 py-2 rounded-xl bg-slate-950/40 border border-slate-850 flex items-center justify-between text-xs text-slate-400">
-        <span>{filteredPayments.length} versement(s) affiché(s)</span>
-        <span>
-          Total encaissé filtré :{' '}
-          <strong className="text-emerald-400 font-bold">{formatFCFA(totalFilteredAmount)}</strong>
-        </span>
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          placeholder="Rechercher par client, référence reçu (REC-...) ou dette..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition shadow-sm"
+        />
       </div>
 
       {/* Payments List */}
