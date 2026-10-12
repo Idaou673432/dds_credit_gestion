@@ -145,9 +145,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-2 py-1.5">
-        <div className="grid grid-cols-6 gap-0.5 max-w-lg mx-auto">
+      {/* Mobile Bottom Navigation Bar (Optimized for all smartphones) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 px-2 pt-1.5 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+        <div className="grid grid-cols-6 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -155,12 +155,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg text-[9px] font-medium transition cursor-pointer relative ${
-                  isActive ? 'text-cyan-400' : 'text-slate-400 hover:text-slate-200'
+                className={`flex flex-col items-center justify-center min-h-[46px] py-1 px-1 rounded-xl text-[10px] font-semibold transition-all cursor-pointer relative ${
+                  isActive
+                    ? 'text-cyan-400 bg-cyan-500/10 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 active:bg-slate-800/60'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
-                <span className="truncate max-w-[50px] mt-0.5 leading-none">
+                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-cyan-400' : 'text-slate-400'}`} />
+                <span className="truncate max-w-[54px] mt-1 leading-tight text-[10px]">
                   {item.id === 'dashboard'
                     ? 'Accueil'
                     : item.id === 'customers'
@@ -174,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : 'Param.'}
                 </span>
                 {item.badge && (
-                  <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-900" />
                 )}
               </button>
             );

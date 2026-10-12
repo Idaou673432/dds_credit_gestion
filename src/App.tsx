@@ -88,7 +88,7 @@ const MainAppContent: React.FC = () => {
       />
 
       {/* Main Body */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto pb-20 lg:pb-8">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto pb-24 lg:pb-8">
         
         {/* Sidebar */}
         <Sidebar

@@ -191,9 +191,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* GLOBAL SEARCH BAR */}
-          <div ref={searchContainerRef} className="relative flex-1 max-w-md min-w-[180px]">
+          <div ref={searchContainerRef} className="relative flex-1 max-w-md min-w-[130px] sm:min-w-[200px]">
             <div className="relative flex items-center">
-              <Search className="absolute left-3.5 w-4 h-4 text-cyan-400 pointer-events-none" />
+              <Search className="absolute left-3 w-4 h-4 text-cyan-400 pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -203,8 +203,8 @@ export const Header: React.FC<HeaderProps> = ({
                   setIsSearchFocused(true);
                 }}
                 onFocus={() => setIsSearchFocused(true)}
-                placeholder="Rechercher client (nom, 76..., +223)..."
-                className="w-full pl-9 pr-14 sm:pr-16 py-2 bg-slate-950/70 hover:bg-slate-950 focus:bg-slate-950 border border-slate-700/80 focus:border-cyan-500 rounded-2xl text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition shadow-inner"
+                placeholder="Rechercher client (nom, 76...)"
+                className="w-full pl-8.5 pr-10 sm:pr-16 py-2 bg-slate-950/70 hover:bg-slate-950 focus:bg-slate-950 border border-slate-700/80 focus:border-cyan-500 rounded-2xl text-xs sm:text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition shadow-inner"
               />
 
               <div className="absolute right-2.5 flex items-center gap-1">
