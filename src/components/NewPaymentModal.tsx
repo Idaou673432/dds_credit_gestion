@@ -162,44 +162,76 @@ export const NewPaymentModal: React.FC<NewPaymentModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           
-          {/* Customer filter */}
+          {/* Saisie directe du Nom complet du client */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Nom du client concerné <span className="text-cyan-400 font-normal">(Saisir ou filtrer)</span>
+              Nom complet du client <span className="text-rose-400">*</span>
             </label>
-            <div className="space-y-2">
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Tapez le nom ou numéro du client (ex: Oumar)..."
+                required
+                placeholder="Tapez le nom complet du client (ex: Moussa Traoré)..."
                 value={customerSearch}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCustomerSearch(val);
-                  const found = customers.find(c => c.name.toLowerCase() === val.toLowerCase().trim());
-                  if (found) setSelectedCustomerId(found.id);
+                  const found = customers.find(
+                    (c) => c.name.toLowerCase() === val.toLowerCase().trim()
+                  );
+                  if (found) {
+                    setSelectedCustomerId(found.id);
+                  }
                 }}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 placeholder-slate-400"
+                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 placeholder-slate-400 shadow-sm"
               />
 
-              <select
-                value={selectedCustomerId}
-                onChange={(e) => {
-                  setSelectedCustomerId(e.target.value);
-                  const found = customers.find(c => c.id === e.target.value);
-                  if (found) setCustomerSearch(found.name);
-                }}
-                className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
-              >
-                <option value="">Sélectionner ou confirmer parmi la liste...</option>
-                {customers
-                  .filter((c) => c.currentDebt > 0 && (!customerSearch.trim() || c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch.trim())))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone}) — Dette totale : {formatFCFA(c.currentDebt)}
-                    </option>
-                  ))}
-              </select>
+              {/* Suggestions légères au fur et à mesure de la saisie */}
+              {customerSearch.trim().length > 1 && !selectedCustomerId && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-slate-850 border border-slate-700 rounded-xl shadow-xl z-20 max-h-40 overflow-y-auto">
+                  {customers
+                    .filter(
+                      (c) =>
+                        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                        c.phone.includes(customerSearch.trim())
+                    )
+                    .slice(0, 5)
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setCustomerSearch(c.name);
+                          setSelectedCustomerId(c.id);
+                        }}
+                        className="p-2.5 hover:bg-slate-750 transition cursor-pointer flex items-center justify-between text-xs text-slate-200"
+                      >
+                        <div>
+                          <span className="font-bold text-white">{c.name}</span>
+                          <span className="text-slate-400 text-[11px] ml-2">{c.phone}</span>
+                        </div>
+                        <span className={`text-[11px] font-bold ${c.currentDebt > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {c.currentDebt > 0 ? formatFCFA(c.currentDebt) : 'Soldé'}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
+            {selectedCustomerId && (
+              <p className="text-[11px] text-cyan-400 mt-1 flex items-center gap-1">
+                <span>✓ Client identifié : {customerSearch}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomerId('');
+                    setCustomerSearch('');
+                  }}
+                  className="text-slate-400 hover:text-white underline ml-2 text-[10px]"
+                >
+                  Changer
+                </button>
+              </p>
+            )}
           </div>
 
           {/* Credit Selector */}

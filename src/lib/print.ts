@@ -4,10 +4,12 @@ import { formatFCFA, formatDateBamako, PAYMENT_METHOD_LABELS } from './utils';
 export function printReceiptDirect(business: Business, payment: Payment, credit?: Credit) {
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.top = '0';
+  iframe.style.left = '0';
+  iframe.style.width = '100vw';
+  iframe.style.height = '100vh';
+  iframe.style.opacity = '0';
+  iframe.style.zIndex = '-9999';
   iframe.style.border = '0';
   document.body.appendChild(iframe);
 

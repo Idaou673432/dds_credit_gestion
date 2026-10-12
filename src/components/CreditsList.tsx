@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Credit } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatFCFA, formatDateBamako } from '../lib/utils';
+import { deleteCredit } from '../services/creditService';
 import { NewCreditModal } from './NewCreditModal';
 import {
   CreditCard,
@@ -11,8 +12,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Receipt,
-  MessageCircle,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 
 interface CreditsListProps {
@@ -30,11 +31,32 @@ export const CreditsList: React.FC<CreditsListProps> = ({
   onCloseNewCreditModal,
   onOpenNewCreditModal,
 }) => {
-  const { credits, userRole } = useAuth();
+  const { credits, activeBusiness, currentUser, userRole } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [creditToDelete, setCreditToDelete] = useState<Credit | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const canCreate = userRole === 'owner' || userRole === 'manager';
+
+  const handleConfirmDeleteCredit = async () => {
+    if (!creditToDelete || !activeBusiness || !currentUser) return;
+    setIsDeleting(true);
+    try {
+      await deleteCredit(
+        creditToDelete.id,
+        activeBusiness.id,
+        currentUser.uid,
+        currentUser.displayName || currentUser.email || 'utilisateur'
+      );
+      setCreditToDelete(null);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la suppression du crédit.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredCredits = credits.filter((credit) => {
     if (!searchTerm.trim()) return true;
@@ -188,12 +210,12 @@ export const CreditsList: React.FC<CreditsListProps> = ({
                     </p>
                   </div>
 
-                  {/* Action: Single clear direct primary button */}
-                  <div>
+                  {/* Action: Single clear direct primary button + Delete */}
+                  <div className="flex items-center gap-2">
                     {!isPaid ? (
                       <button
                         onClick={() => onOpenNewPayment(credit)}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition cursor-pointer"
                       >
                         <Receipt className="w-3.5 h-3.5" />
                         <span>Rembourser</span>
@@ -203,6 +225,15 @@ export const CreditsList: React.FC<CreditsListProps> = ({
                         Soldé ✓
                       </span>
                     )}
+
+                    <button
+                      type="button"
+                      title="Supprimer ce crédit"
+                      onClick={() => setCreditToDelete(credit)}
+                      className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
@@ -218,6 +249,45 @@ export const CreditsList: React.FC<CreditsListProps> = ({
           onClose={onCloseNewCreditModal}
           onSuccess={() => onCloseNewCreditModal()}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {creditToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-6 text-slate-100">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-center text-white mb-2">
+              Supprimer ce crédit ?
+            </h3>
+
+            <p className="text-xs text-slate-400 text-center mb-6 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer le crédit <strong className="text-white">{creditToDelete.reference}</strong> ({creditToDelete.customerName} - {formatFCFA(creditToDelete.amount)}) ?
+              Le solde restant dû et le cumul du client seront automatiquement recalculés.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCreditToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCredit}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-lg shadow-rose-500/20"
+              >
+                {isDeleting ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

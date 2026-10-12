@@ -15,7 +15,7 @@ export const PrintableReceiptA4 = forwardRef<HTMLDivElement, PrintableReceiptA4P
     return (
       <div
         ref={ref}
-        className="hidden print:block bg-white text-slate-900 p-8 max-w-[210mm] mx-auto font-sans leading-relaxed text-xs"
+        className="bg-white text-slate-900 p-8 max-w-[210mm] mx-auto font-sans leading-relaxed text-xs"
         style={{ minHeight: '297mm' }}
       >
         {/* Header with deep blue banner and DDS Logo */}

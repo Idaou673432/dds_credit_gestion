@@ -443,23 +443,6 @@ export const Header: React.FC<HeaderProps> = ({
                       <p className="text-[11px] text-cyan-400 mt-0.5">Boutique : {activeBusiness?.name}</p>
                     </div>
 
-                    {/* Verification Suite / Tests shortcut hidden inside profile menu */}
-                    <div className="p-2 border-b border-slate-800">
-                      <button
-                        onClick={() => {
-                          setShowRoleMenu(false);
-                          onOpenVerificationSuite();
-                        }}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-cyan-300 text-xs font-medium transition cursor-pointer border border-slate-700/60"
-                      >
-                        <div className="flex items-center gap-2">
-                          <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Audit & Tests (10/10)</span>
-                        </div>
-                        <span className="text-[10px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded font-mono font-bold">OK</span>
-                      </button>
-                    </div>
-
                     {/* Role switcher */}
                     <div className="p-2 border-b border-slate-800">
                       <p className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Customer, Credit, Payment, Business } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatFCFA } from '../lib/utils';
-import { createCustomer, updateCustomer } from '../services/creditService';
+import { createCustomer, updateCustomer, deleteCustomer } from '../services/creditService';
 import { CustomerDetailModal } from './CustomerDetailModal';
 import {
   Users,
@@ -12,11 +12,8 @@ import {
   MapPin,
   AlertCircle,
   CheckCircle2,
-  MessageCircle,
-  FileText,
   Edit2,
-  Archive,
-  RotateCcw,
+  Trash2,
   X,
   Receipt
 } from 'lucide-react';
@@ -32,7 +29,7 @@ export const CustomersList: React.FC<CustomersListProps> = ({
   onOpenNewPayment,
   onOpenWhatsApp,
 }) => {
-  const { customers, credits, payments, activeBusiness, userRole } = useAuth();
+  const { customers, credits, payments, activeBusiness, currentUser, userRole } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -40,6 +37,8 @@ export const CustomersList: React.FC<CustomersListProps> = ({
   // Modal for new/edit customer
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -119,13 +118,25 @@ export const CustomersList: React.FC<CustomersListProps> = ({
     }
   };
 
-  const handleToggleArchive = async (customer: Customer, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newStatus = customer.status === 'active' ? 'archived' : 'active';
+  const handleConfirmDeleteCustomer = async () => {
+    if (!customerToDelete || !activeBusiness || !currentUser) return;
+    setIsDeleting(true);
     try {
-      await updateCustomer(customer.id, { status: newStatus });
+      await deleteCustomer(
+        customerToDelete.id,
+        activeBusiness.id,
+        currentUser.uid,
+        currentUser.displayName || currentUser.email || 'utilisateur'
+      );
+      setCustomerToDelete(null);
+      if (selectedCustomer?.id === customerToDelete.id) {
+        setSelectedCustomer(null);
+      }
     } catch (err) {
       console.error(err);
+      alert('Erreur lors de la suppression du client.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -270,10 +281,26 @@ export const CustomersList: React.FC<CustomersListProps> = ({
                     </span>
                   )}
 
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-cyan-400 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-transform">
-                    <span>Voir fiche</span>
-                    <span>→</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-cyan-400 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-transform">
+                      <span>Voir fiche</span>
+                      <span>→</span>
+                    </span>
+
+                    {canEdit && (
+                      <button
+                        type="button"
+                        title="Supprimer ce client"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCustomerToDelete(cust);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -401,6 +428,45 @@ export const CustomersList: React.FC<CustomersListProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {customerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-6 text-slate-100">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-center text-white mb-2">
+              Supprimer ce client ?
+            </h3>
+
+            <p className="text-xs text-slate-400 text-center mb-6 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer définitivement <strong className="text-white">{customerToDelete.name}</strong> ?
+              Tous ses crédits et ses historiques de paiements seront également effacés.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCustomerToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCustomer}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-lg shadow-rose-500/20"
+              >
+                {isDeleting ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
           </div>
         </div>
       )}

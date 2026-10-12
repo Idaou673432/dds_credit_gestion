@@ -4,6 +4,10 @@ import {
   runTransaction,
   setDoc,
   updateDoc,
+  deleteDoc,
+  getDocs,
+  query,
+  where,
   serverTimestamp,
   getDoc
 } from 'firebase/firestore';
@@ -318,3 +322,188 @@ export async function recordPayment(params: RecordPaymentParams): Promise<Paymen
     handleFirestoreError(error, OperationType.WRITE, `payments/${paymentId}`);
   }
 }
+
+/**
+ * Supprime un client et tous ses crédits et paiements associés
+ */
+export async function deleteCustomer(
+  customerId: string,
+  businessId: string,
+  userId: string,
+  userName?: string
+): Promise<void> {
+  try {
+    // 1. Récupérer et supprimer tous les crédits de ce client
+    const creditsQ = query(collection(db, 'credits'), where('customerId', '==', customerId));
+    const creditsSnap = await getDocs(creditsQ);
+    for (const creditDoc of creditsSnap.docs) {
+      await deleteDoc(doc(db, 'credits', creditDoc.id));
+    }
+
+    // 2. Récupérer et supprimer tous les paiements de ce client
+    const paymentsQ = query(collection(db, 'payments'), where('customerId', '==', customerId));
+    const paymentsSnap = await getDocs(paymentsQ);
+    for (const payDoc of paymentsSnap.docs) {
+      await deleteDoc(doc(db, 'payments', payDoc.id));
+    }
+
+    // 3. Supprimer le document client
+    await deleteDoc(doc(db, 'customers', customerId));
+
+    // 4. Log d'audit
+    const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    await setDoc(doc(db, 'auditLogs', logId), {
+      id: logId,
+      businessId,
+      userId,
+      userEmail: userName || 'utilisateur',
+      action: 'SUPPRESSION_CLIENT',
+      details: `Suppression du client (${customerId}) et de son historique complet.`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `customers/${customerId}`);
+  }
+}
+
+/**
+ * Supprime un crédit et ajuste automatiquement les totaux du client
+ */
+export async function deleteCredit(
+  creditId: string,
+  businessId: string,
+  userId: string,
+  userName?: string
+): Promise<void> {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const creditRef = doc(db, 'credits', creditId);
+      const creditDoc = await transaction.get(creditRef);
+
+      if (!creditDoc.exists()) {
+        throw new Error('Crédit introuvable.');
+      }
+
+      const credit = creditDoc.data() as Credit;
+      const customerRef = doc(db, 'customers', credit.customerId);
+      const customerDoc = await transaction.get(customerRef);
+
+      if (customerDoc.exists()) {
+        const customer = customerDoc.data() as Customer;
+        const newTotalCredit = Math.max(0, (customer.totalCredit || 0) - (credit.amount || 0));
+        const newTotalPaid = Math.max(0, (customer.totalPaid || 0) - (credit.totalPaid || 0));
+        const newCurrentDebt = Math.max(0, (customer.currentDebt || 0) - (credit.remainingAmount || 0));
+
+        transaction.update(customerRef, {
+          totalCredit: newTotalCredit,
+          totalPaid: newTotalPaid,
+          currentDebt: newCurrentDebt,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Supprimer le crédit
+      transaction.delete(creditRef);
+
+      // Log d'audit
+      const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const logRef = doc(db, 'auditLogs', logId);
+      transaction.set(logRef, {
+        id: logId,
+        businessId,
+        userId,
+        userEmail: userName || 'utilisateur',
+        action: 'SUPPRESSION_CRÉDIT',
+        details: `Suppression du crédit ${credit.reference} (${credit.customerName}) de ${credit.amount} FCFA.`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Supprimer les paiements rattachés à ce crédit
+    const paymentsQ = query(collection(db, 'payments'), where('creditId', '==', creditId));
+    const paymentsSnap = await getDocs(paymentsQ);
+    for (const payDoc of paymentsSnap.docs) {
+      await deleteDoc(doc(db, 'payments', payDoc.id));
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `credits/${creditId}`);
+  }
+}
+
+/**
+ * Supprime un versement/remboursement et rétablit le solde restant du crédit et de la dette du client
+ */
+export async function deletePayment(
+  paymentId: string,
+  businessId: string,
+  userId: string,
+  userName?: string
+): Promise<void> {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const paymentRef = doc(db, 'payments', paymentId);
+      const paymentDoc = await transaction.get(paymentRef);
+
+      if (!paymentDoc.exists()) {
+        throw new Error('Paiement introuvable.');
+      }
+
+      const payment = paymentDoc.data() as Payment;
+
+      // 1. Rétablir le crédit
+      if (payment.creditId) {
+        const creditRef = doc(db, 'credits', payment.creditId);
+        const creditDoc = await transaction.get(creditRef);
+        if (creditDoc.exists()) {
+          const credit = creditDoc.data() as Credit;
+          const restoredRemaining = (credit.remainingAmount || 0) + payment.amount;
+          const restoredTotalPaid = Math.max(0, (credit.totalPaid || 0) - payment.amount);
+          const restoredStatus = restoredRemaining === 0 ? 'paid' : (isDateOverdue(credit.dueDate) ? 'overdue' : 'active');
+
+          transaction.update(creditRef, {
+            remainingAmount: restoredRemaining,
+            totalPaid: restoredTotalPaid,
+            status: restoredStatus,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 2. Rétablir le client
+      if (payment.customerId) {
+        const customerRef = doc(db, 'customers', payment.customerId);
+        const customerDoc = await transaction.get(customerRef);
+        if (customerDoc.exists()) {
+          const customer = customerDoc.data() as Customer;
+          const restoredDebt = (customer.currentDebt || 0) + payment.amount;
+          const restoredTotalPaid = Math.max(0, (customer.totalPaid || 0) - payment.amount);
+
+          transaction.update(customerRef, {
+            currentDebt: restoredDebt,
+            totalPaid: restoredTotalPaid,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 3. Supprimer le document du paiement
+      transaction.delete(paymentRef);
+
+      // 4. Log d'audit
+      const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const logRef = doc(db, 'auditLogs', logId);
+      transaction.set(logRef, {
+        id: logId,
+        businessId,
+        userId,
+        userEmail: userName || 'utilisateur',
+        action: 'SUPPRESSION_PAIEMENT',
+        details: `Suppression du versement ${payment.reference} de ${payment.amount} FCFA pour ${payment.customerName}.`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `payments/${paymentId}`);
+  }
+}
+

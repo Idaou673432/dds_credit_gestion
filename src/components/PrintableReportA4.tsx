@@ -15,7 +15,7 @@ export const PrintableReportA4 = forwardRef<HTMLDivElement, PrintableReportA4Pro
     return (
       <div
         ref={ref}
-        className="hidden print:block bg-white text-slate-900 p-8 max-w-[297mm] mx-auto font-sans leading-normal text-xs"
+        className="bg-white text-slate-900 p-8 max-w-[297mm] mx-auto font-sans leading-normal text-xs"
         style={{ minHeight: '210mm' }}
       >
         {/* Header Bar with Logo and Boutique Details */}

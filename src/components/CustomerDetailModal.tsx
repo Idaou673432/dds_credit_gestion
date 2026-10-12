@@ -4,6 +4,7 @@ import { formatFCFA, formatDateBamako, PAYMENT_METHOD_LABELS } from '../lib/util
 import { generateCustomerStatementPDF } from '../lib/pdf';
 import { printStatementDirect } from '../lib/print';
 import { useAuth } from '../context/AuthContext';
+import { deleteCustomer, deleteCredit, deletePayment } from '../services/creditService';
 import {
   X,
   Phone,
@@ -19,7 +20,7 @@ import {
   Receipt,
   User,
   Clock,
-  ChevronDown
+  Trash2
 } from 'lucide-react';
 
 interface CustomerDetailModalProps {
@@ -43,7 +44,7 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   onOpenNewPayment,
   onOpenWhatsApp,
 }) => {
-  const { userRole } = useAuth();
+  const { userRole, currentUser } = useAuth();
   const canCreateCredit = userRole === 'owner' || userRole === 'manager';
 
   const customerCredits = credits.filter((c) => c.customerId === customer.id);
@@ -58,6 +59,48 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
   const handlePrintStatement = () => {
     printStatementDirect(business, customer, customerCredits, customerPayments);
+  };
+
+  const handleDeleteThisCustomer = async () => {
+    if (!currentUser) return;
+    const ok = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer définitivement le client ${customer.name} ? Cette action effacera également son historique.`
+    );
+    if (ok) {
+      await deleteCustomer(
+        customer.id,
+        business.id,
+        currentUser.uid,
+        currentUser.displayName || currentUser.email || 'utilisateur'
+      );
+      onClose();
+    }
+  };
+
+  const handleDeleteCreditItem = async (cred: Credit) => {
+    if (!currentUser) return;
+    const ok = window.confirm(`Supprimer le crédit ${cred.reference} (${formatFCFA(cred.amount)}) ?`);
+    if (ok) {
+      await deleteCredit(
+        cred.id,
+        business.id,
+        currentUser.uid,
+        currentUser.displayName || currentUser.email || 'utilisateur'
+      );
+    }
+  };
+
+  const handleDeletePaymentItem = async (pay: Payment) => {
+    if (!currentUser) return;
+    const ok = window.confirm(`Supprimer le versement ${pay.reference} (${formatFCFA(pay.amount)}) ?`);
+    if (ok) {
+      await deletePayment(
+        pay.id,
+        business.id,
+        currentUser.uid,
+        currentUser.displayName || currentUser.email || 'utilisateur'
+      );
+    }
   };
 
   return (
@@ -139,35 +182,58 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         </div>
 
         {/* Simple Action Toolbar */}
-        <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-900">
-          {hasDebt && firstUnpaidCredit ? (
-            <button
-              onClick={() => onOpenNewPayment(firstUnpaidCredit)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20 transition cursor-pointer"
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              <span>Encaisser un versement</span>
-            </button>
-          ) : canCreateCredit ? (
-            <button
-              onClick={() => onOpenNewCredit(customer)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-cyan-500/20 transition cursor-pointer"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>Nouveau Crédit</span>
-            </button>
-          ) : (
-            <span className="text-xs text-slate-400 font-medium">Fiche client</span>
-          )}
+        <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between gap-2 flex-wrap bg-slate-900">
+          <div className="flex items-center gap-2">
+            {hasDebt && firstUnpaidCredit ? (
+              <button
+                onClick={() => onOpenNewPayment(firstUnpaidCredit)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20 transition cursor-pointer"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>Encaisser un versement</span>
+              </button>
+            ) : canCreateCredit ? (
+              <button
+                onClick={() => onOpenNewCredit(customer)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-black shadow-md shadow-cyan-500/20 transition cursor-pointer"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Nouveau Crédit</span>
+              </button>
+            ) : (
+              <span className="text-xs text-slate-400 font-medium">Fiche client</span>
+            )}
+          </div>
 
-          <button
-            onClick={handleDownloadStatement}
-            title="Télécharger le relevé de compte en PDF"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Relevé PDF</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrintStatement}
+              title="Imprimer le relevé de compte"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-cyan-400 border border-slate-700 text-xs font-semibold transition cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimer</span>
+            </button>
+
+            <button
+              onClick={handleDownloadStatement}
+              title="Télécharger le relevé de compte en PDF"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Relevé PDF</span>
+            </button>
+
+            {canCreateCredit && (
+              <button
+                onClick={handleDeleteThisCustomer}
+                title="Supprimer définitivement ce client"
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-slate-700/60 transition cursor-pointer ml-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body tabs or tables */}
@@ -227,14 +293,24 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
                       <p className="text-[11px] text-rose-400 font-semibold">
                         Reste : {formatFCFA(credit.remainingAmount)}
                       </p>
-                      {credit.remainingAmount > 0 && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {credit.remainingAmount > 0 && (
+                          <button
+                            onClick={() => onOpenNewPayment(credit)}
+                            className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold transition cursor-pointer"
+                          >
+                            Rembourser
+                          </button>
+                        )}
                         <button
-                          onClick={() => onOpenNewPayment(credit)}
-                          className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold transition cursor-pointer"
+                          type="button"
+                          title="Supprimer ce crédit"
+                          onClick={() => handleDeleteCreditItem(credit)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
                         >
-                          Rembourser
+                          <Trash2 className="w-3 h-3" />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -273,11 +349,19 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
                       )}
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-1">
                       <p className="text-xs font-black text-emerald-400">+{formatFCFA(payment.amount)}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
                         Solde restant après : {formatFCFA(payment.remainingAfter)}
                       </p>
+                      <button
+                        type="button"
+                        title="Supprimer ce versement"
+                        onClick={() => handleDeletePaymentItem(payment)}
+                        className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer mt-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 ))}
