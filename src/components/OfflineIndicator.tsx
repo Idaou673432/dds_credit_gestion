@@ -1,6 +1,6 @@
 import React from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { WifiOff, AlertTriangle } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 
 export const OfflineIndicator: React.FC = () => {
   const isOnline = useOnlineStatus();
@@ -8,13 +8,11 @@ export const OfflineIndicator: React.FC = () => {
   if (isOnline) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-50 flex items-center gap-3 rounded-2xl bg-amber-500/95 text-slate-950 px-4 py-3 shadow-xl shadow-amber-500/20 backdrop-blur border border-amber-400 font-medium text-xs sm:text-sm">
-      <div className="p-1.5 rounded-full bg-slate-950/20">
-        <WifiOff className="w-4 h-4 text-slate-950" />
-      </div>
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-50 flex items-center gap-2.5 rounded-lg bg-amber-50 text-amber-900 px-3.5 py-2.5 shadow-md border border-amber-200 text-xs">
+      <WifiOff className="w-4 h-4 text-amber-700 flex-shrink-0" />
       <div>
-        <p className="font-bold">Mode Hors-ligne (Bamako)</p>
-        <p className="text-xs text-slate-900/80">Données en cache local. Vos opérations seront synchronisées dès reconnexion.</p>
+        <p className="font-semibold">Mode hors-ligne</p>
+        <p className="text-[11px] text-amber-800">Données enregistrées en local, synchronisation automatique dès retour du réseau.</p>
       </div>
     </div>
   );

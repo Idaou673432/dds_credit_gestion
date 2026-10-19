@@ -2,22 +2,10 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatFCFA, formatDateBamako, PAYMENT_METHOD_LABELS } from '../lib/utils';
 import {
-  TrendingUp,
-  AlertTriangle,
-  Users,
-  CreditCard,
-  Receipt,
   Plus,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Calendar,
+  Receipt,
   MessageCircle,
-  Clock,
-  ShieldCheck,
-  CheckCircle2,
-  ChevronRight,
-  ChevronDown,
-  MoreHorizontal
+  UserPlus
 } from 'lucide-react';
 import { Credit, Payment } from '../types';
 
@@ -38,17 +26,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const { customers, credits, payments, activeBusiness, userRole } = useAuth();
 
-  // Real-time calculations
+  // Financial calculations
   const totalRemainingDebt = credits.reduce((sum, c) => sum + (c.remainingAmount || 0), 0);
   const totalCreditGranted = credits.reduce((sum, c) => sum + (c.amount || 0), 0);
   const totalRefundsReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const debtorCustomersCount = customers.filter((c) => (c.currentDebt || 0) > 0).length;
-  const overdueCreditsCount = credits.filter(
-    (c) => c.status === 'overdue' && (c.remainingAmount || 0) > 0
-  ).length;
 
-  // Collection recovery rate percentage
   const recoveryRate =
     totalCreditGranted > 0
       ? Math.min(100, Math.round((totalRefundsReceived / totalCreditGranted) * 100))
@@ -56,18 +40,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Monthly stats
   const currentMonthKey = new Date().toISOString().substring(0, 7);
-  const currentMonthGranted = credits
-    .filter((c) => c.createdAt.startsWith(currentMonthKey))
-    .reduce((sum, c) => sum + (c.amount || 0), 0);
   const currentMonthReceived = payments
     .filter((p) => p.createdAt.startsWith(currentMonthKey))
     .reduce((sum, p) => sum + (p.amount || 0), 0);
-  const monthlyRecoveryRate =
-    currentMonthGranted > 0
-      ? Math.min(100, Math.round((currentMonthReceived / currentMonthGranted) * 100))
-      : 100;
 
-  // Due today and overdue calculations
+  // Urgent and overdue debts
   const todayDateStr = new Date().toISOString().substring(0, 10);
   const urgentCredits = credits
     .filter((c) => c.status !== 'paid' && c.remainingAmount > 0 && c.dueDate)
@@ -81,13 +58,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     .filter((c) => c.isDueToday || c.isPast)
     .sort((a, b) => b.daysOverdue - a.daysOverdue);
 
-  // Upcoming due dates (credits with dueDate that are still active and not paid)
-  const upcomingCredits = credits
-    .filter((c) => c.status !== 'paid' && c.remainingAmount > 0 && c.dueDate)
-    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, 6);
-
-  // Recent operations combining credits and payments
+  // Recent operations
   type Operation =
     | { type: 'credit'; data: Credit; date: string }
     | { type: 'payment'; data: Payment; date: string };
@@ -97,97 +68,166 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ...payments.map((p) => ({ type: 'payment' as const, data: p, date: p.createdAt })),
   ]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 7);
+    .slice(0, 6);
 
   const canCreateCredit = userRole === 'owner' || userRole === 'manager';
 
   return (
     <div className="space-y-6">
       
-      {/* Top Banner & Main Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl border border-slate-800 shadow-xl">
+      {/* Top Banner & Single Primary Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
             Tableau de Bord
-            <span className="text-xs font-normal text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-full border border-cyan-800/50">
-              {activeBusiness?.city || 'Bamako'}
-            </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Gestion financière en temps réel pour <strong className="text-slate-200">{activeBusiness?.name}</strong>.
+          <p className="text-xs text-slate-500 mt-0.5">
+            {activeBusiness?.name} · {activeBusiness?.city || 'Bamako'}
           </p>
         </div>
 
-        {/* Main Action Button */}
-        <div>
-          {canCreateCredit ? (
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {canCreateCredit && (
             <button
               onClick={onOpenNewCredit}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-cyan-500/20 transition cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>Nouveau Crédit</span>
+              <Plus className="w-4 h-4" />
+              <span>+ Vendre à Crédit</span>
             </button>
-          ) : (
+          )}
+
+          <button
+            onClick={() => onOpenNewPayment()}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+          >
+            <Receipt className="w-4 h-4" />
+            <span>Encaisser un paiement</span>
+          </button>
+
+          {canCreateCredit && (
             <button
-              onClick={() => onOpenNewPayment()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+              onClick={onOpenNewCustomer}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold transition cursor-pointer bg-white"
             >
-              <Receipt className="w-4 h-4" />
-              <span>Encaisser un versement</span>
+              <UserPlus className="w-4 h-4 text-slate-600" />
+              <span>+ Nouveau Client</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Alert banner for urgent/overdue debts */}
+      {/* 4 Crisp Financial Metrics (No clutter, no decorative pills) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        
+        {/* Metric 1 */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <p className="text-xs font-medium text-slate-500">Dettes en cours (Créances)</p>
+          <p className="text-xl sm:text-2xl font-mono font-bold text-amber-800 mt-1">
+            {formatFCFA(totalRemainingDebt)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            À recouvrer
+          </p>
+        </div>
+
+        {/* Metric 2 */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <p className="text-xs font-medium text-slate-500">Encaissé ce mois</p>
+          <p className="text-xl sm:text-2xl font-mono font-bold text-emerald-700 mt-1">
+            {formatFCFA(currentMonthReceived)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Remboursements reçus
+          </p>
+        </div>
+
+        {/* Metric 3 */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <p className="text-xs font-medium text-slate-500">Clients débiteurs</p>
+          <p className="text-xl sm:text-2xl font-mono font-bold text-slate-900 mt-1">
+            {debtorCustomersCount} <span className="text-xs font-normal text-slate-500">/ {customers.length}</span>
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Ayant un solde dû
+          </p>
+        </div>
+
+        {/* Metric 4 */}
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <p className="text-xs font-medium text-slate-500">Taux de recouvrement</p>
+          <p className="text-xl sm:text-2xl font-mono font-bold text-slate-900 mt-1">
+            {recoveryRate}%
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Total crédits soldés
+          </p>
+        </div>
+
+      </div>
+
+      {/* Urgent Overdue Alert Section */}
       {urgentCredits.length > 0 && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-950/60 via-slate-900 to-amber-950/40 border border-rose-500/30 shadow-xl space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
-              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>Alertes de Recouvrement ({urgentCredits.length}) :</span>
-                <span className="text-rose-400 font-extrabold">Échéances du jour & Retards</span>
+        <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-slate-900 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-bold text-amber-900">
+                Échéances urgentes ({urgentCredits.length})
               </h3>
+              <p className="text-xs text-amber-700">
+                Crédits arrivés à terme nécessitant un encaissement ou une relance
+              </p>
             </div>
             <button
               onClick={() => onSelectTab('credits')}
-              className="text-xs font-semibold text-rose-300 hover:text-white underline cursor-pointer self-start sm:self-auto"
+              className="text-xs font-medium text-amber-800 hover:text-amber-950 underline cursor-pointer"
             >
-              Voir tous les retards
+              Voir la liste
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="space-y-2">
             {urgentCredits.slice(0, 3).map((uc) => (
               <div
                 key={uc.id}
-                className="p-3 rounded-2xl bg-slate-900/90 border border-rose-500/20 flex items-center justify-between gap-2"
+                className="p-3 rounded-lg bg-white border border-amber-200/80 flex items-center justify-between gap-3 shadow-2xs"
               >
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold text-white truncate">{uc.customerName}</p>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                        uc.isDueToday
-                          ? 'bg-amber-500/20 text-amber-300'
-                          : 'bg-rose-500/20 text-rose-300'
-                      }`}
-                    >
-                      {uc.isDueToday ? "Aujourd'hui" : `+${uc.daysOverdue}j`}
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                      {uc.customerName}
+                    </p>
+                    <span className="text-[10px] text-amber-800 font-medium font-mono">
+                      {uc.isDueToday ? "Échéance aujourd'hui" : `+${uc.daysOverdue}j retard`}
                     </span>
                   </div>
-                  <p className="text-[11px] font-bold text-rose-400 mt-0.5">
+                  <p className="text-xs text-amber-800 font-mono font-bold mt-0.5">
                     Reste : {formatFCFA(uc.remainingAmount)}
                   </p>
                 </div>
 
-                <div className="flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {uc.customerPhone && (
+                    <button
+                      onClick={() =>
+                        onOpenWhatsApp(
+                          uc.customerName,
+                          uc.customerPhone || '',
+                          uc.remainingAmount,
+                          uc.dueDate
+                        )
+                      }
+                      title="Relance WhatsApp"
+                      className="p-1.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs transition cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => onOpenNewPayment(uc)}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition cursor-pointer"
+                    className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
                   >
                     Encaisser
                   </button>
@@ -198,220 +238,115 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* 5 Main Financial KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      {/* Grid: Échéances à venir & Dernières Opérations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
-        {/* Card 1: Total Dettes Restantes */}
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-rose-500/40 transition shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition" />
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Dettes Restantes</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight">
-            {formatFCFA(totalRemainingDebt)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            À recouvrer auprès des clients
-          </p>
-        </div>
-
-        {/* Card 2: Total Crédits Accordés */}
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 transition shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/10 transition" />
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Crédits Accordés</span>
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <CreditCard className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-cyan-400 tracking-tight">
-            {formatFCFA(totalCreditGranted)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {credits.length} crédit{credits.length > 1 ? 's' : ''} au total
-          </p>
-        </div>
-
-        {/* Card 3: Total Remboursements Reçus */}
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition" />
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Remboursements Reçus</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Receipt className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-emerald-400 tracking-tight">
-            {formatFCFA(totalRefundsReceived)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {payments.length} versement{payments.length > 1 ? 's' : ''} encaissés
-          </p>
-        </div>
-
-        {/* Card 4: Clients Débiteurs */}
-        <div
-          onClick={() => onSelectTab('customers')}
-          className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition shadow-lg cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Clients Débiteurs</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-amber-300 tracking-tight">
-            {debtorCustomersCount}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 group-hover:text-cyan-400 transition">
-            Sur {customers.length} client{customers.length > 1 ? 's' : ''} enregistrés <ChevronRight className="w-3 h-3" />
-          </p>
-        </div>
-
-        {/* Card 5: Crédits en Retard */}
-        <div
-          onClick={() => onSelectTab('credits')}
-          className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-rose-500/40 transition shadow-lg cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-semibold">Crédits en Retard</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight">
-            {overdueCreditsCount}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 group-hover:text-rose-300 transition">
-            Échéance dépassée <ChevronRight className="w-3 h-3" />
-          </p>
-        </div>
-      </div>
-
-      {/* Financial Health Chart & Recovery Rate */}
-      <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-cyan-400" />
-              Taux de Recouvrement des Dettes
+        {/* Box 1: Dernières Opérations */}
+        <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <h3 className="text-sm font-bold text-slate-900">
+              Dernières Opérations
             </h3>
-            <p className="text-xs text-slate-400">
-              Proportion des remboursements encaissés par rapport aux crédits totaux accordés.
-            </p>
+            <button
+              onClick={() => onSelectTab('payments')}
+              className="text-xs text-slate-500 hover:text-slate-900 font-medium cursor-pointer"
+            >
+              Historique complet →
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-black text-cyan-400">{recoveryRate}%</span>
-            <span className="text-xs text-slate-400">recouvré</span>
-          </div>
-        </div>
 
-        {/* Multi-segmented Progress Bar */}
-        <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden flex border border-slate-700/60 p-0.5">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-            style={{ width: `${recoveryRate}%` }}
-            title={`Remboursé : ${formatFCFA(totalRefundsReceived)}`}
-          />
-        </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mt-3 pt-3 border-t border-slate-800/80 text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-emerald-500" />
-            <span>Remboursements encaissés : <strong className="text-slate-200">{formatFCFA(totalRefundsReceived)}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-rose-500" />
-            <span>Reste à percevoir : <strong className="text-slate-200">{formatFCFA(totalRemainingDebt)}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-cyan-500" />
-            <span>Volume total accordé : <strong className="text-slate-200">{formatFCFA(totalCreditGranted)}</strong></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid: Prochaines Échéances + Dernières Opérations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Box 1: Prochaines Échéances */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-amber-400" />
-                Prochaines Échéances & Alertes
-              </h3>
-              <button
-                onClick={() => onSelectTab('credits')}
-                className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition cursor-pointer"
-              >
-                Voir tout <ChevronRight className="w-3 h-3" />
-              </button>
+          {recentOperations.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs">
+              Aucune opération enregistrée pour le moment.
             </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {recentOperations.map((op, idx) => {
+                const isPayment = op.type === 'payment';
+                return (
+                  <div
+                    key={idx}
+                    className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">
+                        {op.data.customerName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {isPayment
+                          ? `Remboursement (${PAYMENT_METHOD_LABELS[op.data.paymentMethod]})`
+                          : `Crédit : ${op.data.description}`}
+                        {' · '}
+                        {formatDateBamako(op.date, true)}
+                      </p>
+                    </div>
 
-            {upcomingCredits.length === 0 ? (
-              <div className="py-10 text-center text-slate-500 text-xs">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500/40 mx-auto mb-2" />
-                Aucune échéance urgente en attente. Tout est à jour !
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {upcomingCredits.map((credit) => {
-                  const isPast = credit.status === 'overdue';
+                    <div className="text-right flex-shrink-0">
+                      <p
+                        className={`font-mono font-bold ${
+                          isPayment ? 'text-emerald-700' : 'text-slate-900'
+                        }`}
+                      >
+                        {isPayment ? '+' : ''}{formatFCFA(op.data.amount)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Box 2: Liste des Débiteurs Prioritaires */}
+        <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <h3 className="text-sm font-bold text-slate-900">
+              Principaux Débiteurs
+            </h3>
+            <button
+              onClick={() => onSelectTab('customers')}
+              className="text-xs text-slate-500 hover:text-slate-900 font-medium cursor-pointer"
+            >
+              Tous les clients →
+            </button>
+          </div>
+
+          {customers.filter((c) => c.currentDebt > 0).length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs">
+              Aucun client débiteur actuellement. Tous les comptes sont à jour.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {customers
+                .filter((c) => c.currentDebt > 0)
+                .sort((a, b) => b.currentDebt - a.currentDebt)
+                .slice(0, 5)
+                .map((cust) => {
+                  const unpaidCredit = credits.find(
+                    (c) => c.customerId === cust.id && c.remainingAmount > 0
+                  );
                   return (
                     <div
-                      key={credit.id}
-                      className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between gap-3 hover:border-slate-600 transition"
+                      key={cust.id}
+                      className="py-2.5 flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-slate-200 truncate">
-                            {credit.customerName}
-                          </p>
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              isPast
-                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            }`}
-                          >
-                            {isPast ? 'En retard' : 'À venir'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                          {credit.description} • Échéance : {formatDateBamako(credit.dueDate)}
+                        <p className="font-semibold text-slate-900 truncate">
+                          {cust.name}
                         </p>
-                        <p className="text-xs font-extrabold text-rose-400 mt-1">
-                          Reste : {formatFCFA(credit.remainingAmount)}
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {cust.phone} {cust.address ? `· ${cust.address}` : ''}
                         </p>
                       </div>
 
-                      {/* Quick Actions for this debtor */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {credit.customerPhone && (
-                          <button
-                            onClick={() =>
-                              onOpenWhatsApp(
-                                credit.customerName,
-                                credit.customerPhone || '',
-                                credit.remainingAmount,
-                                credit.dueDate
-                              )
-                            }
-                            title="Envoyer un rappel par WhatsApp"
-                            className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition cursor-pointer"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="font-mono font-bold text-amber-800">
+                          {formatFCFA(cust.currentDebt)}
+                        </span>
                         <button
-                          onClick={() => onOpenNewPayment(credit)}
-                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold transition cursor-pointer"
+                          type="button"
+                          onClick={() => onOpenNewPayment(unpaidCredit)}
+                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition cursor-pointer"
                         >
                           Encaisser
                         </button>
@@ -419,85 +354,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Box 2: Dernières Opérations */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-cyan-400" />
-                Dernières Opérations Financières
-              </h3>
-              <button
-                onClick={() => onSelectTab('reports')}
-                className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition cursor-pointer"
-              >
-                Journal complet <ChevronRight className="w-3 h-3" />
-              </button>
             </div>
-
-            {recentOperations.length === 0 ? (
-              <div className="py-10 text-center text-slate-500 text-xs">
-                Aucune opération enregistrée pour le moment.
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {recentOperations.map((op, idx) => {
-                  const isPayment = op.type === 'payment';
-                  return (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-2xl bg-slate-800/40 border border-slate-800 flex items-center justify-between gap-3 hover:bg-slate-800/70 transition"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`p-2 rounded-xl flex-shrink-0 ${
-                            isPayment
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                          }`}
-                        >
-                          {isPayment ? (
-                            <ArrowDownLeft className="w-4 h-4" />
-                          ) : (
-                            <ArrowUpRight className="w-4 h-4" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-200 truncate">
-                            {op.data.customerName}
-                          </p>
-                          <p className="text-[11px] text-slate-400 truncate">
-                            {isPayment
-                              ? `Remboursement (${PAYMENT_METHOD_LABELS[op.data.paymentMethod]})`
-                              : `Crédit : ${op.data.description}`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right flex-shrink-0">
-                        <p
-                          className={`text-xs font-black ${
-                            isPayment ? 'text-emerald-400' : 'text-cyan-400'
-                          }`}
-                        >
-                          {isPayment ? '+' : ''}{formatFCFA(op.data.amount)}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {formatDateBamako(op.date, true)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
       </div>

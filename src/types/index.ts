@@ -71,7 +71,7 @@ export interface Credit {
   updatedAt: string;
 }
 
-export type PaymentMethod = 'cash' | 'orange_money' | 'moov_money' | 'bank_transfer' | 'other';
+export type PaymentMethod = 'cash' | 'orange_money' | 'moov_money' | 'wave' | 'bank_transfer' | 'other';
 
 export interface Payment {
   id: string;

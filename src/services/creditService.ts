@@ -12,7 +12,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Customer, Credit, Payment, UserRole } from '../types';
+import { Customer, Credit, Payment, UserRole, PaymentMethod } from '../types';
 import { generateReference, isDateOverdue } from '../lib/utils';
 
 export interface CreateCreditParams {
@@ -36,7 +36,7 @@ export interface RecordPaymentParams {
   customerName: string;
   creditId: string;
   amount: number;
-  paymentMethod: 'cash' | 'orange_money' | 'moov_money' | 'bank_transfer' | 'other';
+  paymentMethod: PaymentMethod;
   paymentDate: string;
   notes?: string;
   userId: string;

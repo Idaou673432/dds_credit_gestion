@@ -69,6 +69,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: 'Espèces',
   orange_money: 'Orange Money',
   moov_money: 'Moov Money',
+  wave: 'Wave',
   bank_transfer: 'Virement bancaire',
   other: 'Autre moyen'
 };

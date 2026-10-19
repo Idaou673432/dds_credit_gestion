@@ -5,14 +5,10 @@ import { formatFCFA } from '../lib/utils';
 import { createCredit, createCustomer } from '../services/creditService';
 import {
   X,
-  CreditCard,
-  Calendar,
-  User,
-  Phone,
-  AlertCircle,
   AlertTriangle,
-  CheckCircle2,
-  Sparkles
+  Check,
+  Search,
+  UserPlus
 } from 'lucide-react';
 
 interface NewCreditModalProps {
@@ -28,394 +24,387 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
 }) => {
   const { customers, activeBusiness, currentUser } = useAuth();
 
-  // Saisie directe du nom et du téléphone
-  const [customerName, setCustomerName] = useState(preselectedCustomer?.name || '');
-  const [customerPhone, setCustomerPhone] = useState(preselectedCustomer?.phone || '');
-  const [customerId, setCustomerId] = useState(preselectedCustomer?.id || '');
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    preselectedCustomer || null
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
 
   const [description, setDescription] = useState('');
   const [amountStr, setAmountStr] = useState('');
-  const [initialPaymentStr, setInitialPaymentStr] = useState('');
-  const [creditDate, setCreditDate] = useState(new Date().toISOString().substring(0, 10));
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [hasAdvance, setHasAdvance] = useState(false);
+  const [advanceStr, setAdvanceStr] = useState('');
+  const [dueDays, setDueDays] = useState<number | null>(7);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const amount = Math.round(Number(amountStr) || 0);
-  const initialPayment = Math.round(Number(initialPaymentStr) || 0);
-  const remainingPreview = Math.max(0, amount - initialPayment);
+  const advance = hasAdvance ? Math.round(Number(advanceStr) || 0) : 0;
+  const remaining = Math.max(0, amount - advance);
 
-  // Suggestions de clients existants au fur et à mesure de la frappe
-  const matchingCustomers = customers.filter(
-    (c) =>
-      c.status === 'active' &&
-      customerName.trim().length > 0 &&
-      (c.name.toLowerCase().includes(customerName.toLowerCase()) ||
-        c.phone.includes(customerName.trim()))
-  );
+  const matchingCustomers = customers.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const cleanPhone = (c.phone || '').replace(/[\s\-\+\(\)]/g, '');
+    const cleanQ = q.replace(/[\s\-\+\(\)]/g, '');
+    return c.name.toLowerCase().includes(q) || cleanPhone.includes(cleanQ);
+  });
+
+  const handleSelectCustomer = (c: Customer) => {
+    setSelectedCustomer(c);
+    setSearchQuery('');
+    setIsCreatingNew(false);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalName = customerName.trim();
-    const finalPhone = customerPhone.trim();
-
-    if (!finalName) {
-      setError('Veuillez saisir le nom complet du client.');
-      return;
-    }
-    if (!finalPhone) {
-      setError('Veuillez renseigner le numéro de téléphone du client (ex: 76 00 12 34).');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Veuillez spécifier la marchandise ou la nature de la dette.');
-      return;
-    }
-    if (amount <= 0) {
-      setError('Le montant doit être un nombre strictement supérieur à 0 FCFA.');
-      return;
-    }
-    if (initialPayment < 0) {
-      setError('Le paiement initial ne peut pas être négatif.');
-      return;
-    }
-    if (initialPayment > amount) {
-      setError('Le paiement initial ne peut pas dépasser le montant total du crédit.');
-      return;
-    }
-
     if (!activeBusiness || !currentUser) return;
+
+    let targetCustomerId = selectedCustomer?.id;
+    let targetCustomerName = selectedCustomer?.name || '';
+    let targetCustomerPhone = selectedCustomer?.phone || '';
+
+    if (isCreatingNew || !selectedCustomer) {
+      const cleanName = (isCreatingNew ? newName : searchQuery).trim();
+      const cleanPhone = newPhone.trim();
+
+      if (!cleanName) {
+        setError('Indiquez le nom du client.');
+        return;
+      }
+      if (!cleanPhone) {
+        setError('Indiquez le numéro de téléphone.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setError('');
+
+      try {
+        const created = await createCustomer(
+          activeBusiness.id,
+          cleanName,
+          cleanPhone,
+          '',
+          'Créé lors du crédit'
+        );
+        targetCustomerId = created.id;
+        targetCustomerName = created.name;
+        targetCustomerPhone = created.phone;
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Erreur création client');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    if (!description.trim()) {
+      setError('Précisez l’article ou la marchandise.');
+      return;
+    }
+
+    if (amount <= 0) {
+      setError('Indiquez le montant.');
+      return;
+    }
+
+    if (hasAdvance && advance > amount) {
+      setError('L’avance ne peut pas dépasser le montant total.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError('');
 
     try {
-      let resolvedCustomerId = customerId;
-
-      // Si le client n'a pas été sélectionné via suggestion, vérifier si un client identique existe déjà
-      if (!resolvedCustomerId) {
-        const existing = customers.find(
-          (c) =>
-            c.name.toLowerCase() === finalName.toLowerCase() ||
-            (finalPhone && c.phone.replace(/\s+/g, '') === finalPhone.replace(/\s+/g, ''))
-        );
-
-        if (existing) {
-          resolvedCustomerId = existing.id;
-        } else {
-          // Création automatique du nouveau client
-          const newCustomer = await createCustomer(
-            activeBusiness.id,
-            finalName,
-            finalPhone
-          );
-          resolvedCustomerId = newCustomer.id;
-        }
+      let finalDueDate: string | undefined = undefined;
+      if (dueDays !== null) {
+        const d = new Date();
+        d.setDate(d.getDate() + dueDays);
+        finalDueDate = d.toISOString().substring(0, 10);
       }
 
       const res = await createCredit({
         businessId: activeBusiness.id,
-        customerId: resolvedCustomerId,
-        customerName: finalName,
-        customerPhone: finalPhone,
-        description: description.trim(),
+        customerId: targetCustomerId!,
+        customerName: targetCustomerName,
+        customerPhone: targetCustomerPhone,
         amount,
-        initialPayment,
-        creditDate,
-        dueDate: dueDate || undefined,
-        notes: notes.trim(),
+        initialPayment: advance,
+        description: description.trim(),
+        creditDate: new Date().toISOString().substring(0, 10),
+        dueDate: finalDueDate,
         userId: currentUser.uid,
         userName: currentUser.displayName || currentUser.email || 'Commerçant',
       });
 
       onSuccess(res.credit);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du crédit');
+      setError(err instanceof Error ? err.message : 'Erreur enregistrement');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-6 text-slate-100 max-h-[92vh] overflow-y-auto my-0 sm:my-6 pb-safe">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 text-slate-900 max-h-[92vh] overflow-y-auto">
         
-        {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <CreditCard className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Nouveau Crédit Client</h3>
-              <p className="text-xs text-slate-400">Saisie directe du nom du client et de la dette</p>
-            </div>
-          </div>
+        {/* En-tête */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h3 className="text-base font-bold text-slate-900">
+            Nouveau Crédit
+          </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mt-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div className="mt-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
           
-          {/* Nom complet du client (À SAISIR DIRECTEMENT) */}
-          <div className="relative">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Nom complet du client <span className="text-rose-400">* (À saisir)</span>
+          {/* CLIENT */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Client <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                placeholder="Tapez le nom complet (ex: Oumar Traoré, Aminata Diallo)..."
-                value={customerName}
-                onChange={(e) => {
-                  setCustomerName(e.target.value);
-                  setCustomerId(''); // Réinitialise l'ID si le nom change
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                className="w-full pl-3.5 pr-9 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 font-medium placeholder-slate-400"
-              />
-              <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
 
-            {/* Suggestions en temps réel si correspondance trouvée */}
-            {showSuggestions && matchingCustomers.length > 0 && (
-              <div className="absolute left-0 right-0 z-30 mt-1 p-2 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl space-y-1 max-h-48 overflow-y-auto">
-                <div className="flex items-center justify-between px-2 py-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  <span>Client(s) existant(s) trouvé(s)</span>
+            {selectedCustomer ? (
+              <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-sm text-slate-900">{selectedCustomer.name}</p>
+                  <p className="text-xs text-slate-500 font-mono">
+                    {selectedCustomer.phone}
+                    {selectedCustomer.currentDebt > 0 && (
+                      <span className="text-amber-800 ml-1.5 font-semibold">
+                        · Dette : {formatFCFA(selectedCustomer.currentDebt)}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomer(null);
+                    setSearchQuery('');
+                  }}
+                  className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg cursor-pointer font-medium"
+                >
+                  Changer
+                </button>
+              </div>
+            ) : isCreatingNew ? (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">Nouveau client</span>
                   <button
                     type="button"
-                    onClick={() => setShowSuggestions(false)}
-                    className="text-slate-400 hover:text-white"
+                    onClick={() => setIsCreatingNew(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
                   >
-                    Fermer
+                    Client existant
                   </button>
                 </div>
-                {matchingCustomers.map((c) => (
+                <input
+                  type="text"
+                  required
+                  placeholder="Nom complet"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-slate-900"
+                />
+                <input
+                  type="tel"
+                  required
+                  placeholder="Numéro de téléphone"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+                />
+              </div>
+            ) : (
+              <div>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un client..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-24 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-slate-900"
+                  />
                   <button
                     type="button"
-                    key={c.id}
                     onClick={() => {
-                      setCustomerName(c.name);
-                      setCustomerPhone(c.phone);
-                      setCustomerId(c.id);
-                      setShowSuggestions(false);
+                      setIsCreatingNew(true);
+                      setNewName(searchQuery);
                     }}
-                    className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-800 text-left transition cursor-pointer text-xs"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <div>
-                      <span className="font-bold text-white">{c.name}</span>
-                      <span className="text-[11px] text-slate-400 ml-2">({c.phone})</span>
-                    </div>
-                    <span className="text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-                      Dette : {formatFCFA(c.currentDebt)}
-                    </span>
+                    <UserPlus className="w-3 h-3" />
+                    Nouveau
                   </button>
-                ))}
+                </div>
+
+                {matchingCustomers.length > 0 && (
+                  <div className="mt-1.5 max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl shadow-xs">
+                    {matchingCustomers.slice(0, 4).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full p-2.5 text-left hover:bg-slate-50 transition cursor-pointer flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <p className="font-semibold text-slate-900">{c.name}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">{c.phone}</p>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-500">
+                          {c.currentDebt > 0 ? formatFCFA(c.currentDebt) : '0 F'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Numéro de téléphone du client */}
+          {/* ARTICLE / MARCHANDISE */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Numéro de téléphone du client <span className="text-rose-400">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="tel"
-                required
-                placeholder="Ex : +223 76 00 12 34 ou 76001234"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full pl-3.5 pr-9 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-              <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Utilisé pour l'historique et les rappels WhatsApp de paiement.
-            </p>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Description de la marchandise ou produit <span className="text-rose-400">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Article / Marchandise <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="Ex : 2 sacs de riz 50kg + 1 bidon d'huile Dinor"
+              placeholder="Article pris"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-slate-900"
             />
           </div>
 
-          {/* Montant Total FCFA & Paiement Initial */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* MONTANT */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Montant (FCFA) <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min="50"
+                step="50"
+                required
+                placeholder="Montant"
+                value={amountStr}
+                onChange={(e) => {
+                  setAmountStr(e.target.value);
+                  setError('');
+                }}
+                className="w-full pl-3 pr-14 py-2 bg-white border border-slate-300 focus:border-slate-900 rounded-xl text-lg font-mono font-bold text-slate-900 focus:outline-none"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 pointer-events-none">
+                FCFA
+              </span>
+            </div>
+          </div>
+
+          {/* ÉCHÉANCE & AVANCE */}
+          <div className="pt-1 border-t border-slate-100 space-y-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Montant total (FCFA) <span className="text-rose-400">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  placeholder="Ex : 50000"
-                  value={amountStr}
-                  onChange={(e) => setAmountStr(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-cyan-400 font-bold">
-                  FCFA
-                </span>
+              <span className="text-xs font-semibold text-slate-700 block mb-1">Échéance :</span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: '7 jours', val: 7 },
+                  { label: '14 jours', val: 14 },
+                  { label: '1 mois', val: 30 },
+                  { label: 'Sans date', val: null },
+                ].map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.label}
+                    onClick={() => setDueDays(opt.val)}
+                    className={`py-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-center ${
+                      dueDays === opt.val
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Paiement initial / Acompte (facultatif)
-              </label>
-              <div className="relative">
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setHasAdvance(!hasAdvance)}
+                className="text-xs text-slate-600 hover:text-slate-900 font-medium underline cursor-pointer"
+              >
+                {hasAdvance ? 'Supprimer l’avance' : '+ Ajouter une avance versée'}
+              </button>
+
+              {hasAdvance && (
                 <input
                   type="number"
                   min="0"
                   max={amount || undefined}
-                  step="1"
-                  placeholder="Ex : 10000 (ou 0)"
-                  value={initialPaymentStr}
-                  onChange={(e) => setInitialPaymentStr(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                  placeholder="Avance en FCFA"
+                  value={advanceStr}
+                  onChange={(e) => setAdvanceStr(e.target.value)}
+                  className="w-32 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:border-slate-900"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-emerald-400 font-bold">
-                  FCFA
+              )}
+            </div>
+
+            {hasAdvance && advance > 0 && amount > 0 && (
+              <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
+                <span className="text-amber-800">Dette finale :</span>
+                <span className="font-mono font-bold text-amber-950">
+                  {formatFCFA(remaining)}
                 </span>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Real-time Balance Calculation Preview */}
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-            <div>
-              <p className="text-[11px] text-slate-400">Solde restant calculé :</p>
-              <p className="text-[10px] text-slate-500">
-                {amount > 0 ? `${formatFCFA(amount)} − ${formatFCFA(initialPayment)}` : '0 FCFA'}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-base font-black text-rose-400">
-                {formatFCFA(remainingPreview)}
-              </p>
-              <p className="text-[10px] text-slate-400">
-                {remainingPreview === 0 && amount > 0
-                  ? 'Crédit immédiatement soldé'
-                  : 'Reste à recouvrer'}
-              </p>
-            </div>
-          </div>
-
-          {/* Warning if credit limit exceeded */}
-          {(() => {
-            const selectedCust = customers.find(
-              (c) =>
-                c.id === customerId ||
-                (customerName.trim() && c.name.toLowerCase() === customerName.trim().toLowerCase())
-            );
-            if (!selectedCust?.creditLimit || selectedCust.creditLimit <= 0) return null;
-            const projectedDebt = (selectedCust.currentDebt || 0) + remainingPreview;
-            const isOverLimit = projectedDebt > selectedCust.creditLimit;
-            if (!isOverLimit) return null;
-            const excess = projectedDebt - selectedCust.creditLimit;
-
-            return (
-              <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-1">
-                <div className="flex items-center gap-2 font-bold text-amber-400">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Plafond de crédit dépassé (+{formatFCFA(excess)})</span>
-                </div>
-                <p className="text-[11px] text-amber-300/90 leading-relaxed">
-                  Plafond fixé pour <strong>{selectedCust.name}</strong> : {formatFCFA(selectedCust.creditLimit)}.
-                  Dette en cours : {formatFCFA(selectedCust.currentDebt)}. Nouvelle dette totale : <strong className="text-white">{formatFCFA(projectedDebt)}</strong>.
-                </p>
-              </div>
-            );
-          })()}
-
-          {/* Dates: Date du crédit & Échéance */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Date de l'opération <span className="text-rose-400">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={creditDate}
-                onChange={(e) => setCreditDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Date d'échéance (facultative)
-              </label>
-              <input
-                type="date"
-                min={creditDate}
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-          </div>
-
-          {/* Commentaire facultatif */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Commentaire / Modalités (facultatif)
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Ex : Promesse de paiement après la récolte ou fin du mois..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-            />
-          </div>
-
-          {/* Footer actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          {/* BOUTONS */}
+          <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || amount <= 0 || !customerName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-cyan-500/20 transition disabled:opacity-50 cursor-pointer"
+              disabled={isSubmitting || amount <= 0}
+              className="flex-1 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
             >
-              {isSubmitting ? 'Validation...' : 'Valider le Crédit'}
+              <Check className="w-4 h-4" />
+              <span>
+                {isSubmitting
+                  ? 'Enregistrement...'
+                  : amount > 0
+                  ? `Valider (${formatFCFA(remaining)})`
+                  : 'Valider le Crédit'}
+              </span>
             </button>
           </div>
 

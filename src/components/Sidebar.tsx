@@ -6,8 +6,8 @@ import {
   Receipt,
   FileBarChart,
   Settings,
-  PlusCircle,
-  AlertCircle
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +18,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavigationTab) => void;
   onOpenNewCredit: () => void;
   onOpenNewPayment: () => void;
+  onOpenNewCustomer?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -25,8 +26,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   onOpenNewCredit,
   onOpenNewPayment,
+  onOpenNewCustomer,
 }) => {
-  const { customers, credits, userRole } = useAuth();
+  const { customers, credits, userRole, activeBusiness } = useAuth();
 
   const debtorCount = customers.filter((c) => c.currentDebt > 0).length;
   const overdueCount = credits.filter((c) => c.status === 'overdue' && c.remainingAmount > 0).length;
@@ -42,15 +44,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'customers' as NavigationTab,
       label: 'Clients',
       icon: Users,
-      badge: debtorCount > 0 ? `${debtorCount} débiteurs` : null,
-      badgeColor: 'bg-rose-500/20 text-rose-300 border border-rose-500/30',
+      badge: debtorCount > 0 ? `${debtorCount}` : null,
     },
     {
       id: 'credits' as NavigationTab,
       label: 'Crédits',
       icon: CreditCard,
-      badge: overdueCount > 0 ? `${overdueCount} retards` : null,
-      badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+      badge: overdueCount > 0 ? `${overdueCount}` : null,
     },
     {
       id: 'payments' as NavigationTab,
@@ -77,27 +77,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop / Tablet Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-slate-800 p-4 space-y-6 flex-shrink-0 min-h-[calc(100vh-5rem)]">
+      <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-slate-200 p-4 space-y-4 flex-shrink-0 min-h-[calc(100vh-4rem)]">
         
         {/* Quick Action Buttons */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {canCreateCredit && (
             <button
               onClick={onOpenNewCredit}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-teal-400 transition cursor-pointer active:scale-98"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
             >
-              <PlusCircle className="w-4 h-4" />
-              Nouveau Crédit
+              <Plus className="w-4 h-4" />
+              + Vendre à Crédit
             </button>
           )}
 
           <button
             onClick={onOpenNewPayment}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-750 px-4 py-2.5 text-xs font-bold text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 transition cursor-pointer active:scale-98"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <Receipt className="w-4 h-4" />
-            Encaisser un Remboursement
+            Encaisser
           </button>
+
+          {canCreateCredit && onOpenNewCustomer && (
+            <button
+              onClick={onOpenNewCustomer}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 px-3.5 py-2 text-xs font-bold transition cursor-pointer bg-white"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-slate-600" />
+              + Nouveau Client
+            </button>
+          )}
         </div>
 
         {/* Navigation Links */}
@@ -109,18 +119,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
                   isActive
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-slate-100 text-slate-900 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                <div className="flex items-center gap-2.5">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-900' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${item.badgeColor}`}>
+                  <span className="text-[11px] font-mono text-slate-500 font-semibold">
                     {item.badge}
                   </span>
                 )}
@@ -129,34 +139,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Mali / DDS Brand Tag in Sidebar */}
-        <div className="pt-4 border-t border-slate-800">
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-3">
-            <img 
-              src="/app-icon.png" 
-              alt="DDS Crédit Confiance" 
-              className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" 
-              onError={(e) => {
-                (e.currentTarget.style as any).display = 'none';
-              }}
-            />
-            <div className="min-w-0">
-              <p className="font-bold text-slate-200 flex items-center gap-1.5 truncate">
-                <span>🇲🇱</span> Conçu pour le Mali
-              </p>
-              <p className="text-[10px] text-slate-400 truncate">
-                Diaby Digital Solution (DDS)
-              </p>
-              <p className="text-[10px] text-cyan-400 font-medium truncate">
-                FCFA • Bamako
-              </p>
-            </div>
-          </div>
+        {/* Quiet Footer */}
+        <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500">
+          <p className="font-medium text-slate-700 truncate">{activeBusiness?.name || 'Boutique'}</p>
+          <p className="text-[10px] text-slate-400">DDS Crédit Confiance · Mali</p>
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar (Optimized for all smartphones) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 px-2 pt-1.5 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 pt-1 pb-safe shadow-md">
         <div className="grid grid-cols-6 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -165,14 +156,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`flex flex-col items-center justify-center min-h-[46px] py-1 px-1 rounded-xl text-[10px] font-semibold transition-all cursor-pointer relative ${
+                className={`flex flex-col items-center justify-center min-h-[46px] py-1 px-1 rounded-lg text-[10px] font-medium transition-colors cursor-pointer relative ${
                   isActive
-                    ? 'text-cyan-400 bg-cyan-500/10 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 active:bg-slate-800/60'
+                    ? 'text-slate-900 font-bold bg-slate-100'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110 text-cyan-400' : 'text-slate-400'}`} />
-                <span className="truncate max-w-[54px] mt-1 leading-tight text-[10px]">
+                <Icon className={`w-4 h-4 mb-0.5 ${isActive ? 'text-slate-900' : 'text-slate-400'}`} />
+                <span className="truncate max-w-[50px] leading-tight">
                   {item.id === 'dashboard'
                     ? 'Accueil'
                     : item.id === 'customers'
@@ -180,13 +171,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : item.id === 'credits'
                     ? 'Crédits'
                     : item.id === 'payments'
-                    ? 'Paiements'
+                    ? 'Caisse'
                     : item.id === 'reports'
                     ? 'Rapports'
                     : 'Param.'}
                 </span>
                 {item.badge && (
-                  <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-900" />
+                  <span className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-amber-600" />
                 )}
               </button>
             );

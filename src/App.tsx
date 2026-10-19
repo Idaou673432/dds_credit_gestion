@@ -10,6 +10,7 @@ import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { VerificationSuiteModal } from './components/VerificationSuiteModal';
+import { NewCustomerModal } from './components/NewCustomerModal';
 import { NewCreditModal } from './components/NewCreditModal';
 import { NewPaymentModal } from './components/NewPaymentModal';
 import { WhatsAppReminderModal } from './components/WhatsAppReminderModal';
@@ -25,6 +26,7 @@ const MainAppContent: React.FC = () => {
 
   // Modals state
   const [isVerificationSuiteOpen, setIsVerificationSuiteOpen] = useState(false);
+  const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
   const [isNewCreditModalOpen, setIsNewCreditModalOpen] = useState(false);
   const [isNewPaymentModalOpen, setIsNewPaymentModalOpen] = useState(false);
   const [preselectedCreditForPayment, setPreselectedCreditForPayment] = useState<Credit | null>(null);
@@ -55,16 +57,16 @@ const MainAppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-100 p-4">
-        <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-black text-xl mb-4 animate-pulse">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-900 p-4">
+        <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-base mb-3 shadow-md">
           DDS
         </div>
-        <div className="flex items-center gap-2 text-cyan-400 text-sm font-semibold">
-          <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="flex items-center gap-2 text-slate-800 text-sm font-semibold">
+          <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
           <span>Chargement de DDS Crédit Confiance...</span>
         </div>
         <p className="text-xs text-slate-500 mt-2">
-          Initialisation de la base sécurisée Cloud Firestore (Bamako)
+          Données sécurisées • Bamako, Mali
         </p>
       </div>
     );
@@ -75,13 +77,14 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       
       {/* Header with Global Search */}
       <Header
         onOpenVerificationSuite={() => setIsVerificationSuiteOpen(true)}
         onOpenNewCredit={(cust) => handleOpenNewCredit(cust)}
         onOpenNewPayment={(cred) => handleOpenNewPayment(cred)}
+        onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
         onSelectCustomer={(cust) => setSelectedCustomerForDetail(cust)}
         onOpenWhatsApp={(name, phone, debt) => handleOpenWhatsApp(name, phone, debt)}
         onNavigateToCustomers={() => setCurrentTab('customers')}
@@ -96,13 +99,14 @@ const MainAppContent: React.FC = () => {
           onSelectTab={setCurrentTab}
           onOpenNewCredit={() => handleOpenNewCredit()}
           onOpenNewPayment={() => handleOpenNewPayment()}
+          onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
         />
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
           {currentTab === 'dashboard' && (
             <Dashboard
-              onOpenNewCustomer={() => setCurrentTab('customers')}
+              onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
               onOpenNewCredit={() => handleOpenNewCredit()}
               onOpenNewPayment={handleOpenNewPayment}
               onOpenWhatsApp={handleOpenWhatsApp}
@@ -114,6 +118,7 @@ const MainAppContent: React.FC = () => {
             <CustomersList
               onOpenNewCredit={(cust) => handleOpenNewCredit(cust)}
               onOpenNewPayment={(credit) => handleOpenNewPayment(credit)}
+              onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
               onOpenWhatsApp={(name, phone, debt) => handleOpenWhatsApp(name, phone, debt)}
             />
           )}
@@ -146,6 +151,17 @@ const MainAppContent: React.FC = () => {
       {/* Verification Suite Modal */}
       {isVerificationSuiteOpen && (
         <VerificationSuiteModal onClose={() => setIsVerificationSuiteOpen(false)} />
+      )}
+
+      {/* New Customer Modal */}
+      {isNewCustomerModalOpen && (
+        <NewCustomerModal
+          onClose={() => setIsNewCustomerModalOpen(false)}
+          onSuccess={(cust) => {
+            setIsNewCustomerModalOpen(false);
+            setSelectedCustomerForDetail(cust);
+          }}
+        />
       )}
 
       {/* New Credit Modal from any tab */}

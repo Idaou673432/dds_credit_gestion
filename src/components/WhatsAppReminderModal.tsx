@@ -3,13 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { formatFCFA, formatDateBamako, generateWhatsAppUrl } from '../lib/utils';
 import {
   X,
-  MessageCircle,
   ExternalLink,
-  Phone,
   Copy,
-  Check,
-  Languages,
-  Sparkles
+  Check
 } from 'lucide-react';
 
 interface WhatsAppReminderModalProps {
@@ -77,130 +73,101 @@ export const WhatsAppReminderModal: React.FC<WhatsAppReminderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-6 text-slate-100 max-h-[92vh] overflow-y-auto my-0 sm:my-6 pb-safe">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="w-full max-w-lg rounded-t-xl sm:rounded-xl bg-white border border-slate-200 shadow-xl p-5 sm:p-6 text-slate-900 max-h-[92vh] overflow-y-auto my-0 sm:my-6 pb-safe">
         
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <MessageCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Rappel WhatsApp Client</h3>
-              <p className="text-xs text-slate-400">Modèles en Français, Bambara et Mixte</p>
-            </div>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Relance de Paiement WhatsApp</h3>
+            <p className="text-xs text-slate-500">Message personnalisable en Français, Bambara ou Mixte</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1 rounded text-slate-400 hover:text-slate-700 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Recipient Details */}
-        <div className="mt-4 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+        <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
           <div>
-            <p className="font-bold text-slate-200">{customerName}</p>
-            <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-              <Phone className="w-3 h-3 text-cyan-400" /> {phone}
-            </p>
+            <p className="font-semibold text-slate-900">{customerName}</p>
+            <p className="text-[11px] font-mono text-slate-500 mt-0.5">{phone}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-slate-500">Dette à rappeler</p>
-            <p className="text-sm font-black text-rose-400">{formatFCFA(amount)}</p>
+            <p className="text-[10px] text-slate-500">Dette à recouvrer</p>
+            <p className="text-sm font-mono font-bold text-amber-800">{formatFCFA(amount)}</p>
           </div>
         </div>
 
         {/* Language Selector */}
         <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Languages className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Choisir la langue du modèle :</span>
-            </label>
-            <span className="text-[10px] text-cyan-400 font-medium">Bambara / Français</span>
-          </div>
-
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Langue du message :
+          </label>
           <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleSelectLang('fr')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeLang === 'fr'
-                  ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-sm'
-                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
-              }`}
-            >
-              <span>🇫🇷 Français</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSelectLang('bm')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeLang === 'bm'
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-sm'
-                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
-              }`}
-            >
-              <span>🇲🇱 Bambara</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSelectLang('mixte')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeLang === 'mixte'
-                  ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-sm'
-                  : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:bg-slate-800'
-              }`}
-            >
-              <span>🤝 Mixte</span>
-            </button>
+            {[
+              { id: 'fr' as LanguageOption, label: 'Français' },
+              { id: 'bm' as LanguageOption, label: 'Bambara' },
+              { id: 'mixte' as LanguageOption, label: 'Mixte' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelectLang(item.id)}
+                className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                  activeLang === item.id
+                    ? 'bg-slate-900 border-slate-900 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Text Area for custom message */}
+        {/* Text Area */}
         <div className="mt-4">
-          <label className="block text-xs font-semibold text-slate-300 mb-1">
-            Texte du message (modifiable avant envoi) :
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Texte du message :
           </label>
           <textarea
-            rows={7}
+            rows={6}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500 font-sans leading-relaxed"
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-slate-800 leading-relaxed font-sans"
           />
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-semibold transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? 'Copié !' : 'Copier le texte'}
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Copié' : 'Copier'}</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+              className="px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
             >
-              Fermer
+              Annuler
             </button>
             <button
               type="button"
               onClick={handleOpenWhatsApp}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-md shadow-emerald-500/20 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              <ExternalLink className="w-4 h-4" />
-              Ouvrir WhatsApp
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Ouvrir WhatsApp</span>
             </button>
           </div>
         </div>
