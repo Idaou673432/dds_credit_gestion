@@ -28,6 +28,7 @@ interface HeaderProps {
   onOpenVerificationSuite: () => void;
   onOpenNewCredit: (customer?: Customer) => void;
   onOpenNewPayment: (credit?: Credit) => void;
+  onOpenNewCustomer?: () => void;
   onSelectCustomer?: (customer: Customer) => void;
   onOpenWhatsApp?: (name: string, phone: string, amount: number) => void;
   onNavigateToCustomers?: () => void;
@@ -37,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenVerificationSuite,
   onOpenNewCredit,
   onOpenNewPayment,
+  onOpenNewCustomer,
   onSelectCustomer,
   onOpenWhatsApp,
   onNavigateToCustomers,

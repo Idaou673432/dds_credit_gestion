@@ -39,7 +39,7 @@ export function isDateOverdue(dueDateString?: string | null): boolean {
   }
 }
 
-export function generateReference(prefix: 'CR' | 'REC'): string {
+export function generateReference(prefix: 'CR' | 'REC' | 'FAC'): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -91,4 +91,21 @@ export function exportToCSV(filename: string, headers: string[], rows: (string |
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Nettoie récursivement un objet pour Firestore en supprimant toute clé avec une valeur 'undefined'
+ */
+export function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        result[key] = cleanForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result as T;
 }

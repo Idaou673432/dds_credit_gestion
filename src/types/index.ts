@@ -67,6 +67,7 @@ export interface Credit {
   notes?: string;
   createdBy: string;
   createdByName?: string;
+  saleId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +83,7 @@ export interface Payment {
   creditId: string;
   creditReference?: string;
   creditDescription?: string;
+  saleId?: string;
   amount: number;
   paymentMethod: PaymentMethod;
   paymentDate: string;
@@ -90,6 +92,40 @@ export interface Payment {
   createdBy: string;
   createdByName?: string;
   createdAt: string;
+}
+
+export interface SaleItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export type SalePaymentType = 'full' | 'partial' | 'credit';
+export type SaleStatus = 'paid' | 'partial' | 'credit';
+
+export interface Sale {
+  id: string;
+  reference: string;
+  businessId: string;
+  customerId?: string;
+  customerName: string;
+  customerPhone?: string;
+  items: SaleItem[];
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentType: SalePaymentType;
+  paymentMethod: PaymentMethod;
+  status: SaleStatus;
+  creditId?: string;
+  dueDate?: string;
+  notes?: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {
@@ -109,3 +145,4 @@ export interface DashboardStats {
   debtorCustomersCount: number;
   overdueCreditsCount: number;
 }
+

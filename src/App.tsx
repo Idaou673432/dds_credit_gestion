@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Sidebar, NavigationTab } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { CustomersList } from './components/CustomersList';
+import { SalesView } from './components/SalesView';
 import { CreditsList } from './components/CreditsList';
 import { PaymentsList } from './components/PaymentsList';
 import { ReportsView } from './components/ReportsView';
@@ -11,11 +12,14 @@ import { SettingsView } from './components/SettingsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { VerificationSuiteModal } from './components/VerificationSuiteModal';
 import { NewCustomerModal } from './components/NewCustomerModal';
+import { NewSaleModal } from './components/NewSaleModal';
+import { SaleReceiptModal } from './components/SaleReceiptModal';
 import { NewCreditModal } from './components/NewCreditModal';
 import { NewPaymentModal } from './components/NewPaymentModal';
 import { WhatsAppReminderModal } from './components/WhatsAppReminderModal';
 import { CustomerDetailModal } from './components/CustomerDetailModal';
-import { Customer, Credit, Payment } from './types';
+import { Customer, Credit, Payment, Sale } from './types';
+import { printSaleThermalDirect } from './lib/print';
 import { Loader2 } from 'lucide-react';
 import { LoginView } from './components/LoginView';
 
@@ -27,6 +31,8 @@ const MainAppContent: React.FC = () => {
   // Modals state
   const [isVerificationSuiteOpen, setIsVerificationSuiteOpen] = useState(false);
   const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
+  const [isNewSaleModalOpen, setIsNewSaleModalOpen] = useState(false);
+  const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState<Sale | null>(null);
   const [isNewCreditModalOpen, setIsNewCreditModalOpen] = useState(false);
   const [isNewPaymentModalOpen, setIsNewPaymentModalOpen] = useState(false);
   const [preselectedCreditForPayment, setPreselectedCreditForPayment] = useState<Credit | null>(null);
@@ -97,6 +103,7 @@ const MainAppContent: React.FC = () => {
         <Sidebar
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
+          onOpenNewSale={() => setIsNewSaleModalOpen(true)}
           onOpenNewCredit={() => handleOpenNewCredit()}
           onOpenNewPayment={() => handleOpenNewPayment()}
           onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
@@ -107,10 +114,20 @@ const MainAppContent: React.FC = () => {
           {currentTab === 'dashboard' && (
             <Dashboard
               onOpenNewCustomer={() => setIsNewCustomerModalOpen(true)}
+              onOpenNewSale={() => setIsNewSaleModalOpen(true)}
               onOpenNewCredit={() => handleOpenNewCredit()}
               onOpenNewPayment={handleOpenNewPayment}
               onOpenWhatsApp={handleOpenWhatsApp}
               onSelectTab={(tab) => setCurrentTab(tab)}
+            />
+          )}
+
+          {currentTab === 'sales' && (
+            <SalesView
+              onOpenNewSale={() => setIsNewSaleModalOpen(true)}
+              onOpenSaleReceipt={(sale) => setSelectedSaleForReceipt(sale)}
+              onOpenPaymentForCredit={(cred) => handleOpenNewPayment(cred)}
+              onOpenWhatsApp={(name, phone, debt, dueDate) => handleOpenWhatsApp(name, phone, debt, dueDate)}
             />
           )}
 
@@ -160,6 +177,35 @@ const MainAppContent: React.FC = () => {
           onSuccess={(cust) => {
             setIsNewCustomerModalOpen(false);
             setSelectedCustomerForDetail(cust);
+          }}
+        />
+      )}
+
+      {/* New Sale Modal */}
+      {isNewSaleModalOpen && (
+        <NewSaleModal
+          onClose={() => setIsNewSaleModalOpen(false)}
+          onSuccess={(sale, autoPrint) => {
+            setIsNewSaleModalOpen(false);
+            setSelectedSaleForReceipt(sale);
+            if (autoPrint && activeBusiness) {
+              printSaleThermalDirect(activeBusiness, sale, '58mm');
+            }
+          }}
+        />
+      )}
+
+      {/* Sale Receipt Modal */}
+      {selectedSaleForReceipt && (
+        <SaleReceiptModal
+          sale={selectedSaleForReceipt}
+          onClose={() => setSelectedSaleForReceipt(null)}
+          onOpenPaymentModal={(sale) => {
+            setSelectedSaleForReceipt(null);
+            if (sale.creditId) {
+              const cred = credits.find((c) => c.id === sale.creditId);
+              if (cred) handleOpenNewPayment(cred);
+            }
           }}
         />
       )}

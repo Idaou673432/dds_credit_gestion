@@ -127,6 +127,31 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "businessId", "userId", "action", "timestamp"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Vente, facturation multi-articles et encaissement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "customerPhone": { "type": "string", "maxLength": 32 },
+        "totalAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["full", "partial", "credit"] },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string", "enum": ["paid", "partial", "credit"] },
+        "creditId": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "reference", "businessId", "customerName", "totalAmount", "paidAmount", "remainingAmount", "paymentType", "status"]
     }
   },
   "firestore": {
@@ -157,6 +182,10 @@
     "/auditLogs/{logId}": {
       "schema": { "$ref": "#/entities/AuditLog" },
       "description": "Journal d'audit des actions"
+    },
+    "/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Factures et ventes multi-articles"
     }
   }
 }

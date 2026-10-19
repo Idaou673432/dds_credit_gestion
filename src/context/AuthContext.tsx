@@ -16,7 +16,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Business, Customer, Credit, Payment, AuditLog, UserRole, UserProfile } from '../types';
+import { Business, Customer, Credit, Payment, AuditLog, UserRole, UserProfile, Sale } from '../types';
 
 export interface AppUser {
   uid: string;
@@ -34,6 +34,7 @@ interface AuthContextType {
   customers: Customer[];
   credits: Credit[];
   payments: Payment[];
+  sales: Sale[];
   auditLogs: AuditLog[];
   loading: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline' | 'error';
@@ -64,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [credits, setCredits] = useState<Credit[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
@@ -234,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCustomers([]);
       setCredits([]);
       setPayments([]);
+      setSales([]);
       setAuditLogs([]);
       return;
     }
@@ -318,10 +321,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Sales listener
+    const salesQuery = query(
+      collection(db, 'sales'),
+      where('businessId', '==', activeBusiness.id)
+    );
+    const unsubSales = onSnapshot(
+      salesQuery,
+      (snapshot) => {
+        const list: Sale[] = [];
+        snapshot.forEach((d) => list.push(d.data() as Sale));
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setSales(list);
+        setSyncStatus('synced');
+      },
+      (error) => {
+        setSyncStatus('offline');
+        console.warn('Firestore sales listener error:', error);
+      }
+    );
+
     return () => {
       unsubCust();
       unsubCredits();
       unsubPayments();
+      unsubSales();
       unsubLogs();
     };
   }, [currentUser?.uid, activeBusiness?.id]);
@@ -476,6 +500,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customers,
       credits,
       payments,
+      sales,
       auditLogs,
       loading,
       syncStatus,
@@ -499,6 +524,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customers,
       credits,
       payments,
+      sales,
       auditLogs,
       loading,
       syncStatus,

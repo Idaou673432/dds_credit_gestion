@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Customer, Credit, Payment, UserRole, PaymentMethod } from '../types';
-import { generateReference, isDateOverdue } from '../lib/utils';
+import { generateReference, isDateOverdue, cleanForFirestore } from '../lib/utils';
 
 export interface CreateCreditParams {
   businessId: string;
@@ -71,7 +71,7 @@ export async function createCustomer(
   };
 
   try {
-    await setDoc(doc(db, 'customers', customerId), customerData);
+    await setDoc(doc(db, 'customers', customerId), cleanForFirestore(customerData));
     return customerData;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `customers/${customerId}`);
@@ -172,12 +172,12 @@ export async function createCredit(params: CreateCreditParams): Promise<{ credit
 
       // 2. Write credit doc
       const creditRef = doc(db, 'credits', creditId);
-      transaction.set(creditRef, creditData);
+      transaction.set(creditRef, cleanForFirestore(creditData));
 
       // 3. Write initial payment doc if applicable
       if (initialPaymentData) {
         const paymentRef = doc(db, 'payments', initialPaymentData.id);
-        transaction.set(paymentRef, initialPaymentData);
+        transaction.set(paymentRef, cleanForFirestore(initialPaymentData));
       }
 
       // 4. Update customer stats
@@ -253,6 +253,14 @@ export async function recordPayment(params: RecordPaymentParams): Promise<Paymen
 
       const customer = customerDoc.data() as Customer;
 
+      // 2b. Fetch linked Sale if applicable (all reads before writes)
+      let saleDoc: any = null;
+      let saleRef: any = null;
+      if (credit.saleId) {
+        saleRef = doc(db, 'sales', credit.saleId);
+        saleDoc = await transaction.get(saleRef);
+      }
+
       // 3. Compute new balances
       const newRemainingAmount = credit.remainingAmount - amount;
       const newTotalPaidCredit = credit.totalPaid + amount;
@@ -270,6 +278,7 @@ export async function recordPayment(params: RecordPaymentParams): Promise<Paymen
         creditId: params.creditId,
         creditReference: credit.reference,
         creditDescription: credit.description,
+        saleId: credit.saleId,
         amount,
         paymentMethod: params.paymentMethod,
         paymentDate: params.paymentDate,
@@ -288,6 +297,18 @@ export async function recordPayment(params: RecordPaymentParams): Promise<Paymen
         updatedAt: now,
       });
 
+      // 4b. Update linked Sale if exists
+      if (saleDoc && saleDoc.exists()) {
+        const saleData = saleDoc.data();
+        const updatedSalePaid = (saleData.paidAmount || 0) + amount;
+        transaction.update(saleRef, {
+          paidAmount: updatedSalePaid,
+          remainingAmount: newRemainingAmount,
+          status: newRemainingAmount === 0 ? 'paid' : 'partial',
+          updatedAt: now,
+        });
+      }
+
       // 5. Update Customer
       transaction.update(customerRef, {
         totalPaid: newCustomerTotalPaid,
@@ -297,7 +318,7 @@ export async function recordPayment(params: RecordPaymentParams): Promise<Paymen
 
       // 6. Insert Payment
       const paymentRef = doc(db, 'payments', paymentId);
-      transaction.set(paymentRef, createdPayment);
+      transaction.set(paymentRef, cleanForFirestore(createdPayment));
 
       // 7. Insert Audit Log
       const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;

@@ -21,12 +21,14 @@ import {
 interface CustomersListProps {
   onOpenNewCredit: (customer: Customer) => void;
   onOpenNewPayment: (credit?: Credit) => void;
+  onOpenNewCustomer?: () => void;
   onOpenWhatsApp: (customerName: string, phone: string, amount: number) => void;
 }
 
 export const CustomersList: React.FC<CustomersListProps> = ({
   onOpenNewCredit,
   onOpenNewPayment,
+  onOpenNewCustomer,
   onOpenWhatsApp,
 }) => {
   const { customers, credits, payments, activeBusiness, currentUser, userRole } = useAuth();

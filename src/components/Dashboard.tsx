@@ -5,20 +5,24 @@ import {
   Plus,
   Receipt,
   MessageCircle,
-  UserPlus
+  UserPlus,
+  ShoppingBag,
+  Archive
 } from 'lucide-react';
 import { Credit, Payment } from '../types';
 
 interface DashboardProps {
   onOpenNewCustomer: () => void;
+  onOpenNewSale?: () => void;
   onOpenNewCredit: () => void;
   onOpenNewPayment: (prefillCredit?: Credit) => void;
   onOpenWhatsApp: (customerName: string, phone: string, amount: number, dueDate?: string) => void;
-  onSelectTab: (tab: 'customers' | 'credits' | 'payments' | 'reports') => void;
+  onSelectTab: (tab: 'dashboard' | 'sales' | 'customers' | 'credits' | 'payments' | 'reports') => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onOpenNewCustomer,
+  onOpenNewSale,
   onOpenNewCredit,
   onOpenNewPayment,
   onOpenWhatsApp,
@@ -86,35 +90,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* Action Buttons */}
+        {/* 2 Actions Essentielles : Simple, sans répétition */}
         <div className="flex flex-wrap items-center gap-2">
-          {canCreateCredit && (
+          {onOpenNewSale && (
             <button
-              onClick={onOpenNewCredit}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+              onClick={onOpenNewSale}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span>+ Vendre à Crédit</span>
+              <ShoppingBag className="w-4 h-4 text-emerald-400" />
+              <span>+ Nouvelle Vente</span>
             </button>
           )}
 
           <button
             onClick={() => onOpenNewPayment()}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Receipt className="w-4 h-4" />
             <span>Encaisser un paiement</span>
           </button>
-
-          {canCreateCredit && (
-            <button
-              onClick={onOpenNewCustomer}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold transition cursor-pointer bg-white"
-            >
-              <UserPlus className="w-4 h-4 text-slate-600" />
-              <span>+ Nouveau Client</span>
-            </button>
-          )}
         </div>
       </div>
 
